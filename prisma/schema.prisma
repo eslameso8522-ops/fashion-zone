@@ -8,13 +8,15 @@ datasource db {
 }
 
 model Category {
-  id        String    @id @default(cuid())
-  slug      String    @unique
-  name      String
-  image     String    @db.Text
-  products  Product[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id           String    @id @default(cuid())
+  slug         String    @unique
+  name         String
+  image        String    @db.Text
+  showInNavbar Boolean   @default(true)
+  orderIndex   Int       @default(0)
+  products     Product[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 }
 
 model Product {
@@ -47,7 +49,8 @@ model Order {
   customerAddress String   @db.Text
   items           Json     // Ordered items snapshot
   total           Float
-  status          String   @default("PENDING") // PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
+  status          String   @default("PENDING") // PENDING, PREPARING, SHIPPED, DELIVERED, CANCELLED
+  trackingNumber  String?
   notes           String?  @db.Text
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -60,4 +63,16 @@ model AdminUser {
   name      String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model SiteSettings {
+  id                  String   @id @default("default")
+  storeName           String   @default("Fashion Zone")
+  whatsappNumber      String   @default("201000000000")
+  facebookUrl         String   @default("https://facebook.com")
+  instagramUrl        String   @default("https://instagram.com")
+  tiktokUrl           String   @default("https://tiktok.com")
+  announcementText    String   @default("تألقي مع تشكيلة Fashion Zone الجديدة ✨ شحن مجاني للطلبات فوق 500 جنيه | كود: GIRL10")
+  announcementEnabled Boolean  @default(true)
+  updatedAt           DateTime @updatedAt
 }

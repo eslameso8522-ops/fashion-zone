@@ -48,19 +48,29 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH /api/orders - تحديث حالة الطلب
+// PATCH /api/orders - تحديث حالة الطلب ورقم التتبع
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { id, status } = body;
+    const { id, status, trackingNumber, notes } = body;
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: 'معرف الطلب مطلوب' }, { status: 400 });
+    }
+
+    const dataToUpdate: any = {};
+    if (status !== undefined) dataToUpdate.status = status;
+    if (trackingNumber !== undefined) dataToUpdate.trackingNumber = trackingNumber;
+    if (notes !== undefined) dataToUpdate.notes = notes;
 
     const updated = await prisma.order.update({
       where: { id },
-      data: { status },
+      data: dataToUpdate,
     });
 
     return NextResponse.json({ success: true, order: updated });
   } catch (error: any) {
+    console.error('Error updating order:', error);
     return NextResponse.json(
       { success: false, error: 'فشل في تحديث حالة الطلب' },
       { status: 500 }

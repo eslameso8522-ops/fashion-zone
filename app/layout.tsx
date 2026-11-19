@@ -5,6 +5,7 @@ import AnnouncementBar from '@/components/AnnouncementBar';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import SocialProofToast from '@/components/SocialProofToast';
+import PwaNotificationBanner from '@/components/PwaNotificationBanner';
 import { MessageCircle } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -15,6 +16,7 @@ export const metadata: Metadata = {
   },
   description: 'متجر Fashion Zone - أرقى فساتين السهرة، العبايات، الحقائب الفاخرة، المجوهرات والعطور بأسعار مميزة وشحن سريع لجميع المحافظات.',
   keywords: ['Fashion Zone', 'فساتين سهرة', 'عبايات خليجية', 'حقائب نسائية', 'مجوهرات روز جولد', 'عطور نسائية', 'متجر بنات'],
+  manifest: '/manifest.webmanifest',
   openGraph: {
     title: 'Fashion Zone | متجر الأزياء النسائية والجمال الراقي',
     description: 'تسوقي أحدث صيحات الموضة والفساتين الراقية بخصومات حصرية وتوصيل سريع لباب بيتك.',
@@ -58,6 +60,9 @@ export default function RootLayout({
 
           {/* Social Proof Live Sales Toast */}
           <SocialProofToast />
+
+          {/* PWA Smart Install Prompt & Push Notifications & Announcement Popup */}
+          <PwaNotificationBanner />
 
           {/* Floating WhatsApp Action Button */}
           <aside aria-label="محادثة واتساب">
