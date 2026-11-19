@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Sparkles, Lock, Mail, ArrowLeft, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Sparkles, Lock, Mail, ArrowLeft, ShieldCheck, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -11,7 +11,25 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [error, setError] = useState('');
+
+  // Check if session already exists
+  useEffect(() => {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fz_admin_token') : null;
+    fetch('/api/admin/me', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.authenticated) {
+          router.replace('/admin');
+        } else {
+          setCheckingSession(false);
+        }
+      })
+      .catch(() => setCheckingSession(false));
+  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,7 +45,8 @@ export default function AdminLoginPage() {
 
       const data = await res.json();
 
-      if (data.success) {
+      if (data.success && data.token) {
+        localStorage.setItem('fz_admin_token', data.token);
         router.push('/admin');
         router.refresh();
       } else {
@@ -40,9 +59,18 @@ export default function AdminLoginPage() {
     }
   };
 
+  if (checkingSession) {
+    return (
+      <div className="min-h-screen bg-pink-50/50 flex flex-col items-center justify-center p-4">
+        <div className="w-12 h-12 rounded-full border-4 border-pink-200 border-t-rose-500 animate-spin mb-3"></div>
+        <p className="text-xs font-bold text-stone-600">جاري فحص الجلسة المحفوظة...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blush-50 via-pink-50/50 to-creamy-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-pink-100 overflow-hidden">
+      <div className="w-full max-w-md bg-white rounded-3xl shadow-xl border border-pink-100 overflow-hidden animate-scaleUp">
         
         {/* Header */}
         <div className="bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 p-8 text-center text-white relative">
@@ -50,7 +78,7 @@ export default function AdminLoginPage() {
             <Lock className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-black font-serif">لوحة تحكم Fashion Zone</h1>
-          <p className="text-xs text-pink-100 mt-1">تسجيل دخول مديرة المتجر</p>
+          <p className="text-xs text-pink-100 mt-1">تسجيل دخول مديرة المتجر (جلسة دائمة)</p>
         </div>
 
         {/* Form Body */}
@@ -103,31 +131,36 @@ export default function AdminLoginPage() {
               </div>
             </div>
 
+            <div className="flex items-center gap-2 text-xs text-stone-600 bg-pink-50/50 p-2.5 rounded-xl border border-pink-100">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+              <span className="text-[11px] font-semibold">تظل جلستك مسجلة تلقائياً لمدة عام كامل دون الحاجة لإعادة الدخول.</span>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 hover:from-rose-600 hover:to-pink-600 text-white font-bold rounded-xl shadow-soft-pink flex items-center justify-center gap-2 transition disabled:opacity-50 text-sm mt-2"
+              className="w-full bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold py-3.5 rounded-xl transition shadow-md shadow-pink-300/40 text-xs sm:text-sm flex items-center justify-center gap-2"
             >
               {loading ? (
-                <span>جاري التحقق...</span>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <>
-                  <ShieldCheck className="w-4 h-4" />
-                  <span>تسجيل الدخول</span>
+                  <Lock className="w-4 h-4" />
+                  <span>دخول لوحة التحكم</span>
                 </>
               )}
             </button>
           </form>
 
-          {/* Quick info */}
-          <div className="pt-4 border-t border-pink-100 flex items-center justify-between text-xs text-stone-500">
-            <Link href="/" className="hover:text-rose-600 transition flex items-center gap-1 font-semibold">
+          <div className="text-center pt-2">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-500 hover:text-rose-600 transition"
+            >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>العودة للمتجر</span>
+              <span>العودة للمتجر الرئيسي</span>
             </Link>
-            <span className="text-[11px] text-stone-400">نظام أمان مشفر 🔒</span>
           </div>
-
         </div>
 
       </div>

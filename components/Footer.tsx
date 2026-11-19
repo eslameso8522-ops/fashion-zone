@@ -48,7 +48,7 @@ export default function Footer() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Secret Easter Egg: Click copyright 5 times consecutively to open Admin Login
+  // Secret Easter Egg: Click copyright 3 times consecutively to open Admin Login
   const handleCopyrightClick = () => {
     clicksRef.current += 1;
     const currentClicks = clicksRef.current;
@@ -57,15 +57,15 @@ export default function Footer() {
       clearTimeout(clickTimerRef.current);
     }
 
-    if (currentClicks >= 5) {
+    if (currentClicks >= 3) {
       clicksRef.current = 0;
       setHint('جاري توجيهك إلى لوحة تحكم الآدمن 🚀...');
-      window.location.href = '/admin/login';
+      window.location.href = '/admin';
       return;
     }
 
-    if (currentClicks >= 2) {
-      setHint(`اضغطي ${5 - currentClicks} مرات إضافية للدخول للوحة التحكم 🔒`);
+    if (currentClicks >= 1) {
+      setHint(`اضغطي ${3 - currentClicks} مرات إضافية للدخول للوحة التحكم 🔒`);
     }
 
     // Reset after 3 seconds of no clicking
@@ -274,7 +274,7 @@ export default function Footer() {
           <p
             onClick={handleCopyrightClick}
             className="cursor-pointer select-none hover:text-rose-600 transition py-1"
-            title="انقري هنا 5 مرات للدخول للوحة التحكم 🔒"
+            title="انقري هنا 3 مرات للدخول للوحة التحكم 🔒"
           >
             © {new Date().getFullYear()} <strong>Fashion Zone</strong>. جميع الحقوق محفوظة بكل حب لصاحبات الذوق الرفيع.
           </p>

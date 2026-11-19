@@ -33,6 +33,10 @@ import {
   Save,
   DollarSign,
   AlertCircle,
+  Tag,
+  Megaphone,
+  Gift,
+  Copy,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -70,9 +74,25 @@ interface OrderItem {
   customerAddress: string;
   items: any[];
   total: number;
+  discountAmount?: number;
+  couponCode?: string;
   status: string;
   trackingNumber?: string;
   notes?: string;
+  createdAt: string;
+}
+
+interface CouponItem {
+  id: string;
+  code: string;
+  description?: string;
+  discountType: string;
+  discountValue: number;
+  minOrderAmount: number;
+  maxDiscount?: number;
+  usageLimit?: number;
+  usedCount: number;
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -84,9 +104,17 @@ interface SiteSettings {
   tiktokUrl: string;
   announcementText: string;
   announcementEnabled: boolean;
+  promoPopupTitle?: string;
+  promoPopupText?: string;
+  promoPopupImage?: string;
+  promoCouponCode?: string;
+  promoPopupEnabled?: boolean;
+  heroBannerTitle?: string;
+  heroBannerSubtitle?: string;
+  heroBannerBadge?: string;
 }
 
-type TabType = 'overview' | 'products' | 'categories' | 'orders' | 'settings';
+type TabType = 'overview' | 'products' | 'categories' | 'orders' | 'coupons' | 'ads_settings';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -98,6 +126,7 @@ export default function AdminPage() {
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [settings, setSettings] = useState<SiteSettings>({
     storeName: 'Fashion Zone',
     whatsappNumber: '201000000000',
@@ -106,6 +135,14 @@ export default function AdminPage() {
     tiktokUrl: 'https://tiktok.com',
     announcementText: 'تألقي مع تشكيلة Fashion Zone الجديدة ✨ شحن مجاني للطلبات فوق 500 جنيه | كود خصم: GIRL10',
     announcementEnabled: true,
+    promoPopupTitle: 'عرض خاص وحصري لكِ يا جميلة ✨',
+    promoPopupText: 'خصم إضافي 10% بمناسبة إطلاق التشكيلة الجديدة! استخدمي كود الخصم الآن واستمتعي بشحن سريع لباب بيتك.',
+    promoPopupImage: '',
+    promoCouponCode: 'GIRL10',
+    promoPopupEnabled: true,
+    heroBannerTitle: 'تشكيلة الخريف والشتاء الفاخرة',
+    heroBannerSubtitle: 'تألقي بأحدث فساتين السهرة والعبايات الراقية بتصميمات ساحرة',
+    heroBannerBadge: 'خصومات حصرية لفترة محدودة 🔥',
   });
 
   const [loading, setLoading] = useState(false);
@@ -134,6 +171,18 @@ export default function AdminPage() {
   const [newCatShowInNavbar, setNewCatShowInNavbar] = useState(true);
   const [uploadingCatImage, setUploadingCatImage] = useState(false);
 
+  // Coupon Form states
+  const [showAddCouponModal, setShowAddCouponModal] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponDesc, setCouponDesc] = useState('');
+  const [couponType, setCouponType] = useState('PERCENTAGE');
+  const [couponVal, setCouponVal] = useState('');
+  const [couponMinOrder, setCouponMinOrder] = useState('0');
+
+  // Ad Image Uploader state
+  const [uploadingAdImage, setUploadingAdImage] = useState(false);
+  const [showAdPreviewModal, setShowAdPreviewModal] = useState(false);
+
   // Orders filter & tracking edit
   const [orderFilter, setOrderFilter] = useState('ALL');
   const [orderSearchQuery, setOrderSearchQuery] = useState('');
@@ -144,30 +193,23 @@ export default function AdminPage() {
   const [savingSettings, setSavingSettings] = useState(false);
 
   const availableSizes = ['S', 'M', 'L', 'XL', 'XXL', 'مقاس موحد', '52', '54', '56', '58'];
-  const presetColors = [
-    { name: 'وردي ناعم', hex: '#fecdd3' },
-    { name: 'روز جولد', hex: '#b76e79' },
-    { name: 'أبيض لؤلؤي', hex: '#fdfbf9' },
-    { name: 'أسود ملكي', hex: '#1c1917' },
-    { name: 'كافيه هادئ', hex: '#c79e97' },
-    { name: 'سماوي باستيل', hex: '#bae6fd' },
-    { name: 'أحمر قرمزي', hex: '#f43f5e' },
-  ];
 
   // Fetch initial data
   const fetchData = async () => {
     try {
-      const [catsRes, prodsRes, ordersRes, settingsRes] = await Promise.all([
+      const [catsRes, prodsRes, ordersRes, settingsRes, couponsRes] = await Promise.all([
         fetch('/api/categories'),
         fetch('/api/products'),
         fetch('/api/orders'),
         fetch('/api/settings'),
+        fetch('/api/coupons'),
       ]);
 
       const catsData = await catsRes.json();
       const prodsData = await prodsRes.json();
       const ordersData = await ordersRes.json();
       const settingsData = await settingsRes.json();
+      const couponsData = await couponsRes.json();
 
       if (catsData.success) {
         setCategories(catsData.categories);
@@ -184,14 +226,21 @@ export default function AdminPage() {
       if (settingsData.success && settingsData.settings) {
         setSettings(settingsData.settings);
       }
+      if (couponsData.success && couponsData.coupons) {
+        setCoupons(couponsData.coupons);
+      }
     } catch (e) {
       console.error('Error fetching admin data', e);
     }
   };
 
-  // Check authentication on mount
+  // Check persistent session on mount
   useEffect(() => {
-    fetch('/api/admin/me')
+    const token = typeof window !== 'undefined' ? localStorage.getItem('fz_admin_token') : null;
+
+    fetch('/api/admin/me', {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then((res) => res.json())
       .then((data) => {
         if (data.authenticated) {
@@ -203,14 +252,15 @@ export default function AdminPage() {
         }
       })
       .catch(() => router.replace('/admin/login'));
-  }, []);
+  }, [router]);
 
   const handleLogout = async () => {
+    localStorage.removeItem('fz_admin_token');
     await fetch('/api/admin/logout', { method: 'POST' });
     router.replace('/admin/login');
   };
 
-  // 1. Upload Product Image to Cloudinary
+  // Upload Product Image to Cloudinary
   const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -242,7 +292,7 @@ export default function AdminPage() {
     }
   };
 
-  // 2. Upload Category Image to Cloudinary
+  // Upload Category Image to Cloudinary
   const handleCategoryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -272,7 +322,37 @@ export default function AdminPage() {
     }
   };
 
-  // Add Category Handler
+  // Upload Promo Ad Image to Cloudinary
+  const handleAdImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingAdImage(true);
+    try {
+      const file = files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data.success && data.url) {
+        setSettings((prev) => ({ ...prev, promoPopupImage: data.url }));
+        setSuccessMessage('تم رفع صورة الإعلان الترويجي بنجاح!');
+        setTimeout(() => setSuccessMessage(''), 4000);
+      }
+    } catch (err: any) {
+      alert('خطأ أثناء رفع صورة الإعلان: ' + err.message);
+    } finally {
+      setUploadingAdImage(false);
+      e.target.value = '';
+    }
+  };
+
+  // Create Category
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName || !newCatImage) {
@@ -310,7 +390,7 @@ export default function AdminPage() {
     }
   };
 
-  // Toggle Category Navbar Display
+  // Toggle Category Navbar
   const handleToggleCategoryNavbar = async (cat: CategoryItem) => {
     try {
       const res = await fetch('/api/categories', {
@@ -484,7 +564,82 @@ export default function AdminPage() {
     }
   };
 
-  // Save Site Settings
+  // Create Coupon
+  const handleCreateCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!couponCode || !couponVal) return;
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/coupons', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: couponCode,
+          description: couponDesc,
+          discountType: couponType,
+          discountValue: parseFloat(couponVal),
+          minOrderAmount: parseFloat(couponMinOrder || '0'),
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        confetti({ particleCount: 70, spread: 60 });
+        setSuccessMessage(`تم إنشاء كود الخصم "${data.coupon.code}" بنجاح!`);
+        setCouponCode('');
+        setCouponDesc('');
+        setCouponVal('');
+        setShowAddCouponModal(false);
+        fetchData();
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        alert('خطأ: ' + data.error);
+      }
+    } catch (err: any) {
+      alert('خطأ: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Toggle Coupon Active
+  const handleToggleCoupon = async (coupon: CouponItem) => {
+    try {
+      const res = await fetch('/api/coupons', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: coupon.id, isActive: !coupon.isActive }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setCoupons((prev) =>
+          prev.map((c) => (c.id === coupon.id ? { ...c, isActive: !c.isActive } : c))
+        );
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Delete Coupon
+  const handleDeleteCoupon = async (coupon: CouponItem) => {
+    if (!confirm(`هل أنتِ متأكدة من حذف كود الخصم "${coupon.code}"؟`)) return;
+
+    try {
+      const res = await fetch(`/api/coupons?id=${coupon.id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setCoupons((prev) => prev.filter((c) => c.id !== coupon.id));
+        setSuccessMessage(`تم حذف كود "${coupon.code}" بنجاح.`);
+        setTimeout(() => setSuccessMessage(''), 4000);
+      }
+    } catch (err: any) {
+      alert('خطأ: ' + err.message);
+    }
+  };
+
+  // Save Settings & Ads
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     setSavingSettings(true);
@@ -497,7 +652,7 @@ export default function AdminPage() {
       const data = await res.json();
       if (data.success) {
         confetti({ particleCount: 60, spread: 50 });
-        setSuccessMessage('تم حفظ إعدادات المتجر والسوشيال ميديا وشريط الإعلانات بنجاح!');
+        setSuccessMessage('تم حفظ إعدادات المتجر والإعلانات والسوشيال ميديا بنجاح!');
         setTimeout(() => setSuccessMessage(''), 5000);
       } else {
         alert('خطأ أثناء حفظ الإعدادات: ' + data.error);
@@ -514,7 +669,6 @@ export default function AdminPage() {
     .filter((o) => o.status !== 'CANCELLED')
     .reduce((sum, o) => sum + (o.total || 0), 0);
   const pendingOrdersCount = orders.filter((o) => o.status === 'PENDING').length;
-  const shippedOrdersCount = orders.filter((o) => o.status === 'SHIPPED').length;
   const inStockCount = products.filter((p) => p.inStock).length;
   const navbarCatsCount = categories.filter((c) => c.showInNavbar).length;
 
@@ -553,7 +707,7 @@ export default function AdminPage() {
                 لوحة تحكم Fashion Zone 🛍️
               </h1>
               <p className="text-[11px] text-stone-500">
-                مرحباً بكِ، {currentAdmin?.name || 'مديرة المتجر'} ({currentAdmin?.email})
+                مرحباً بكِ، {currentAdmin?.name || 'مديرة المتجر'} (جلستكِ محفوظة دائماً ✓)
               </p>
             </div>
           </div>
@@ -642,15 +796,27 @@ export default function AdminPage() {
           </button>
 
           <button
-            onClick={() => setActiveTab('settings')}
+            onClick={() => setActiveTab('coupons')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
-              activeTab === 'settings'
+              activeTab === 'coupons'
                 ? 'bg-rose-500 text-white shadow-sm shadow-pink-200'
                 : 'text-stone-600 hover:bg-pink-50 hover:text-rose-600'
             }`}
           >
-            <Settings className="w-4 h-4" />
-            <span>إعدادات المتجر والسوشيال</span>
+            <Tag className="w-4 h-4" />
+            <span>أكواد الخصم ({coupons.length})</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('ads_settings')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
+              activeTab === 'ads_settings'
+                ? 'bg-rose-500 text-white shadow-sm shadow-pink-200'
+                : 'text-stone-600 hover:bg-pink-50 hover:text-rose-600'
+            }`}
+          >
+            <Megaphone className="w-4 h-4" />
+            <span>نظام الإعلانات والإعدادات</span>
           </button>
         </div>
       </div>
@@ -725,16 +891,16 @@ export default function AdminPage() {
 
               <div className="bg-white p-5 rounded-3xl border border-pink-100 shadow-sm flex items-center justify-between">
                 <div>
-                  <span className="text-xs text-stone-500 font-semibold">أقسام المتجر والناف بار</span>
-                  <div className="text-2xl font-black text-stone-900 font-sans mt-1">
-                    {categories.length} قسم
+                  <span className="text-xs text-stone-500 font-semibold">أكواد الخصم النشطة</span>
+                  <div className="text-2xl font-black text-purple-600 font-sans mt-1">
+                    {coupons.filter((c) => c.isActive).length} كوبون
                   </div>
-                  <span className="text-[10px] text-purple-600 font-bold mt-0.5 block">
-                    {navbarCatsCount} يظهر في الناف بار
+                  <span className="text-[10px] text-stone-400 mt-0.5 block">
+                    كود {coupons[0]?.code || 'GIRL10'} فعال الآن
                   </span>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-500 flex items-center justify-center">
-                  <Layers className="w-6 h-6" />
+                  <Tag className="w-6 h-6" />
                 </div>
               </div>
             </div>
@@ -744,7 +910,7 @@ export default function AdminPage() {
               <div className="space-y-1 text-center md:text-right">
                 <h3 className="text-lg font-bold">تحكم كامل ومباشر في متجر Fashion Zone ✨</h3>
                 <p className="text-xs text-pink-100">
-                  يمكنكِ إضافة منتجات جديدة بصور Cloudinary، التحكم في أقسام الناف بار، وتعديل رقم الواتساب بضغطة زر واحدة.
+                  إدارة المنتجات، التحكم في قوائم الأقسام المنسدلة، نظام أكواد الخصم، والإعلانات الترويجية.
                 </p>
               </div>
               <div className="flex flex-wrap gap-2.5">
@@ -759,18 +925,21 @@ export default function AdminPage() {
                   <span>إضافة منتج جديد</span>
                 </button>
                 <button
-                  onClick={() => setActiveTab('categories')}
+                  onClick={() => {
+                    setActiveTab('coupons');
+                    setShowAddCouponModal(true);
+                  }}
                   className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-2.5 rounded-xl backdrop-blur-sm transition flex items-center gap-1.5"
                 >
-                  <Layers className="w-4 h-4" />
-                  <span>تعديل أقسام الناف بار</span>
+                  <Tag className="w-4 h-4" />
+                  <span>كود خصم جديد</span>
                 </button>
                 <button
-                  onClick={() => setActiveTab('settings')}
+                  onClick={() => setActiveTab('ads_settings')}
                   className="bg-white/20 hover:bg-white/30 text-white text-xs font-bold px-4 py-2.5 rounded-xl backdrop-blur-sm transition flex items-center gap-1.5"
                 >
-                  <Settings className="w-4 h-4" />
-                  <span>تعديل رقم الواتساب</span>
+                  <Megaphone className="w-4 h-4" />
+                  <span>نظام الإعلانات</span>
                 </button>
               </div>
             </div>
@@ -870,7 +1039,7 @@ export default function AdminPage() {
               </button>
             </div>
 
-            {/* Product Add Form (Collapsible/Modal) */}
+            {/* Product Add Form Modal */}
             {showAddProductModal && (
               <div className="bg-white rounded-3xl p-6 sm:p-8 border border-pink-200 shadow-md animate-scaleUp">
                 <div className="flex items-center justify-between pb-4 border-b border-pink-100 mb-6">
@@ -1134,9 +1303,9 @@ export default function AdminPage() {
         {activeTab === 'categories' && (
           <div className="space-y-6 animate-fadeIn">
             <div>
-              <h2 className="text-lg font-bold text-stone-900">إدارة الأقسام والتحكم بالناف بار</h2>
+              <h2 className="text-lg font-bold text-stone-900">إدارة الأقسام والقوائم المنسدلة بالناف بار</h2>
               <p className="text-xs text-stone-500">
-                يمكنكِ هنا تحديد الأقسام التي تظهر في شريط التنقل العلوي (الناف بار) وإضافة أقسام جديدة بصورها.
+                الأقسام هنا تظهر تلقائياً بصورها في القائمة المنسدلة الفاخرة بالناف بار، يمكنكِ إخفاء أو إظهار أي قسم بنقرة واحدة.
               </p>
             </div>
 
@@ -1145,7 +1314,7 @@ export default function AdminPage() {
               <div className="bg-white rounded-3xl p-6 border border-pink-100 shadow-sm space-y-4 h-fit">
                 <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
                   <Plus className="w-4 h-4 text-rose-500" />
-                  <span>إضافة قسم جديد</span>
+                  <span>إضافة قسم جديد بصورته</span>
                 </h3>
 
                 <form onSubmit={handleCreateCategory} className="space-y-4">
@@ -1162,7 +1331,7 @@ export default function AdminPage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1.5">صورة القسم الغلاف *</label>
+                    <label className="block text-xs font-bold text-stone-700 mb-1.5">صورة القسم الغلاف (تظهر بالناف بار) *</label>
                     {newCatImage ? (
                       <div className="relative w-full h-32 rounded-xl overflow-hidden border border-pink-200 mb-2">
                         <Image src={newCatImage} alt="Category preview" fill className="object-cover" />
@@ -1200,7 +1369,7 @@ export default function AdminPage() {
                       className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-400"
                     />
                     <label htmlFor="showInNavbar" className="text-xs font-bold text-stone-700 cursor-pointer">
-                      إظهار في الناف بار العلوي تلقائياً
+                      إظهار في القائمة المنسدلة بالناف بار
                     </label>
                   </div>
 
@@ -1232,7 +1401,7 @@ export default function AdminPage() {
                         className="py-3.5 flex items-center justify-between gap-4 hover:bg-pink-50/20 transition px-2 rounded-xl"
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 relative rounded-xl overflow-hidden bg-pink-50 border border-pink-100 flex-shrink-0">
+                          <div className="w-12 h-14 relative rounded-xl overflow-hidden bg-pink-50 border border-pink-100 flex-shrink-0">
                             {cat.image ? (
                               <Image src={cat.image} alt={cat.name} fill className="object-cover" />
                             ) : (
@@ -1295,7 +1464,7 @@ export default function AdminPage() {
           <div className="space-y-6 animate-fadeIn">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-stone-900">إدارة الطلبات والشحن وتتبع الشحنات</h2>
+                <h2 className="text-lg font-bold text-stone-900">إدارة الطلبات وبوليصات الشحن والتتبع</h2>
                 <p className="text-xs text-stone-500">
                   تغيير حالة الطلب وإصدار أرقام بوليصات الشحن ومراسلة العملاء عبر واتساب مباشرة
                 </p>
@@ -1469,6 +1638,11 @@ export default function AdminPage() {
                           <div className="text-right">
                             <span className="text-[11px] text-stone-500">إجمالي الطلب:</span>
                             <div className="text-lg font-black text-rose-600 font-sans">{order.total} ج.م</div>
+                            {order.couponCode && (
+                              <span className="text-[10px] text-emerald-600 font-bold block">
+                                تم تطبيق كود: {order.couponCode}
+                              </span>
+                            )}
                           </div>
 
                           <a
@@ -1511,88 +1685,295 @@ export default function AdminPage() {
         )}
 
         {/* ==================================================== */}
-        {/* TAB 5: SITE SETTINGS & SOCIAL MEDIA */}
+        {/* TAB 5: DISCOUNT COUPONS MANAGEMENT */}
         {/* ==================================================== */}
-        {activeTab === 'settings' && (
-          <div className="space-y-6 animate-fadeIn max-w-3xl">
+        {activeTab === 'coupons' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-bold text-stone-900">إدارة أكواد الخصم والكوبونات 🎟️</h2>
+                <p className="text-xs text-stone-500">
+                  إنشاء أكواد خصم بنسب مئوية أو مبالغ ثابتة تمنح لعميلاتك عند إتمام الطلب بالسلة
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAddCouponModal(!showAddCouponModal)}
+                className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>{showAddCouponModal ? 'إلغاء' : 'إضافة كود خصم جديد'}</span>
+              </button>
+            </div>
+
+            {/* Add Coupon Modal */}
+            {showAddCouponModal && (
+              <div className="bg-white rounded-3xl p-6 border border-pink-200 shadow-md animate-scaleUp">
+                <h3 className="text-sm font-bold text-stone-900 mb-4 pb-2 border-b border-pink-100 flex items-center gap-2">
+                  <Tag className="w-4 h-4 text-rose-500" />
+                  <span>بيانات كود الخصم الجديد</span>
+                </h3>
+
+                <form onSubmit={handleCreateCoupon} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">كود الخصم (بالإنجليزي) *</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="مثال: SUMMER25 أو QUEEN"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value)}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 uppercase font-mono font-bold"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">نوع الخصم *</label>
+                      <select
+                        value={couponType}
+                        onChange={(e) => setCouponType(e.target.value)}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white"
+                      >
+                        <option value="PERCENTAGE">نسبة مئوية (%)</option>
+                        <option value="FIXED">مبلغ ثابت بالجنيه (EGP)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        قيمة الخصم {couponType === 'PERCENTAGE' ? '(مثال: 15 يعني 15%)' : '(مثال: 50 جنيه)'} *
+                      </label>
+                      <input
+                        type="number"
+                        required
+                        placeholder="10"
+                        value={couponVal}
+                        onChange={(e) => setCouponVal(e.target.value)}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">الحد الأدنى لقيمة الطلب (جنيه)</label>
+                      <input
+                        type="number"
+                        placeholder="200"
+                        value={couponMinOrder}
+                        onChange={(e) => setCouponMinOrder(e.target.value)}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">وصف الكود أو المناسبة</label>
+                    <input
+                      type="text"
+                      placeholder="مثال: خصم 10% لكل الطلبات بمناسبة عيد الفطر"
+                      value={couponDesc}
+                      onChange={(e) => setCouponDesc(e.target.value)}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-2 border-t border-pink-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowAddCouponModal(false)}
+                      className="px-4 py-2 text-xs font-bold text-stone-600"
+                    >
+                      إلغاء
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-5 py-2 rounded-xl transition"
+                    >
+                      حفظ وتفعيل الكود
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Coupons List Table */}
+            <div className="bg-white rounded-3xl p-6 border border-pink-100 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-right text-xs">
+                  <thead>
+                    <tr className="border-b border-pink-100 text-stone-400">
+                      <th className="pb-3 font-semibold">الكود</th>
+                      <th className="pb-3 font-semibold">الوصف</th>
+                      <th className="pb-3 font-semibold">قيمة الخصم</th>
+                      <th className="pb-3 font-semibold">الحد الأدنى</th>
+                      <th className="pb-3 font-semibold">مرات الاستخدام</th>
+                      <th className="pb-3 font-semibold">الحالة</th>
+                      <th className="pb-3 font-semibold text-center">إجراءات</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-pink-50">
+                    {coupons.map((coupon) => (
+                      <tr key={coupon.id} className="hover:bg-pink-50/20 transition">
+                        <td className="py-3 font-mono font-black text-rose-600 text-sm">{coupon.code}</td>
+                        <td className="py-3 text-stone-700">{coupon.description || 'بدون وصف'}</td>
+                        <td className="py-3 font-bold text-stone-900">
+                          {coupon.discountType === 'PERCENTAGE'
+                            ? `${coupon.discountValue}%`
+                            : `${coupon.discountValue} ج.م`}
+                        </td>
+                        <td className="py-3 text-stone-500">{coupon.minOrderAmount} ج.م</td>
+                        <td className="py-3 font-bold text-stone-700">{coupon.usedCount} مرة</td>
+                        <td className="py-3">
+                          <button
+                            onClick={() => handleToggleCoupon(coupon)}
+                            className={`px-3 py-1 rounded-full text-[10px] font-bold transition ${
+                              coupon.isActive
+                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                : 'bg-stone-100 text-stone-500 hover:bg-stone-200'
+                            }`}
+                          >
+                            {coupon.isActive ? 'مفعل ✓' : 'معطل ✕'}
+                          </button>
+                        </td>
+                        <td className="py-3 text-center">
+                          <button
+                            onClick={() => handleDeleteCoupon(coupon)}
+                            className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition"
+                            title="حذف الكوبون"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================== */}
+        {/* TAB 6: ADS & SETTINGS MANAGEMENT */}
+        {/* ==================================================== */}
+        {activeTab === 'ads_settings' && (
+          <div className="space-y-6 animate-fadeIn max-w-4xl">
             <div>
-              <h2 className="text-lg font-bold text-stone-900">إعدادات المتجر والتواصل الاجتماعي</h2>
+              <h2 className="text-lg font-bold text-stone-900">نظام الإعلانات الترويجية وإعدادات المتجر 📢</h2>
               <p className="text-xs text-stone-500">
-                تعديل رقم الواتساب الذي يستقبل الطلبات، وروابط فيسبوك وانستجرام وتيك توك، وشريط الإعلانات الترويجي
+                التحكم في شريط الإعلانات، النافذة الإعلانية المنبثقة، بنرات الواجهة، ورقم الواتساب والسوشيال ميديا
               </p>
             </div>
 
-            <form onSubmit={handleSaveSettings} className="bg-white rounded-3xl p-6 sm:p-8 border border-pink-100 shadow-sm space-y-6">
+            <form onSubmit={handleSaveSettings} className="bg-white rounded-3xl p-6 sm:p-8 border border-pink-100 shadow-sm space-y-8">
               
-              {/* WhatsApp Number */}
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-stone-800 flex items-center gap-1.5">
-                  <MessageCircle className="w-4 h-4 text-emerald-500" />
-                  <span>رقم الواتساب الرئيسي لاستقبال الطلبات والاستفسارات *</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="مثال: 201000000000 مع كود الدولة"
-                  value={settings.whatsappNumber}
-                  onChange={(e) => setSettings({ ...settings, whatsappNumber: e.target.value })}
-                  className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20 font-mono"
-                />
-                <p className="text-[11px] text-stone-400">
-                  هذا الرقم هو الذي تذهب إليه محادثات العملاء فور الضغط على زر "طلب عبر واتساب" أو أيقونة المساعدة العائمة.
-                </p>
+              {/* Section 1: Promo Popup Modal Control */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-pink-100">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-rose-500" />
+                    <div>
+                      <h3 className="font-bold text-sm text-stone-900">
+                        النافذة الإعلانية الترويجية المنبثقة (Promo Popup Modal)
+                      </h3>
+                      <p className="text-[11px] text-stone-400">تظهر للزائرات عند الدخول بالمتجر لجذبهن بكود خصم أو صورة عرض</p>
+                    </div>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer bg-pink-50/80 px-3 py-1.5 rounded-xl border border-pink-200">
+                    <input
+                      type="checkbox"
+                      checked={settings.promoPopupEnabled}
+                      onChange={(e) => setSettings({ ...settings, promoPopupEnabled: e.target.checked })}
+                      className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-400"
+                    />
+                    <span className="text-xs font-bold text-stone-700">تفعيل النافذة المنبثقة</span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">عنوان الإعلان *</label>
+                    <input
+                      type="text"
+                      value={settings.promoPopupTitle || ''}
+                      onChange={(e) => setSettings({ ...settings, promoPopupTitle: e.target.value })}
+                      placeholder="مثال: عرض خاص وحصري لكِ يا جميلة ✨"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">كود الخصم المرتبط بالإعلان</label>
+                    <input
+                      type="text"
+                      value={settings.promoCouponCode || ''}
+                      onChange={(e) => setSettings({ ...settings, promoCouponCode: e.target.value.toUpperCase() })}
+                      placeholder="GIRL10"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 uppercase font-mono font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">نص تفاصيل العرض الترويجي</label>
+                  <textarea
+                    rows={2}
+                    value={settings.promoPopupText || ''}
+                    onChange={(e) => setSettings({ ...settings, promoPopupText: e.target.value })}
+                    placeholder="اكتبي تفاصيل الخصم أو الشحن المجاني للعميلة..."
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200"
+                  ></textarea>
+                </div>
+
+                {/* Promo Image Upload (Cloudinary) */}
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    صورة الإعلان المنبثق (اختياري - ترفع لـ Cloudinary)
+                  </label>
+                  {settings.promoPopupImage ? (
+                    <div className="relative w-full h-40 rounded-2xl overflow-hidden border border-pink-200 mb-2">
+                      <Image src={settings.promoPopupImage} alt="Ad image" fill className="object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setSettings({ ...settings, promoPopupImage: '' })}
+                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full shadow"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-full h-24 rounded-2xl border-2 border-dashed border-pink-300 hover:border-rose-500 bg-pink-50/30 flex flex-col items-center justify-center cursor-pointer transition">
+                      <Upload className="w-5 h-5 text-rose-500 mb-1" />
+                      <span className="text-xs font-bold text-rose-600">
+                        {uploadingAdImage ? 'جاري رفع صورة الإعلان...' : 'رفع صورة بانر الإعلان'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAdImageUpload}
+                        disabled={uploadingAdImage}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
 
-              {/* Social Media Links */}
-              <div className="space-y-4 pt-4 border-t border-pink-100">
-                <h3 className="font-bold text-xs text-stone-800 flex items-center gap-1.5">
-                  <Share2 className="w-4 h-4 text-rose-500" />
-                  <span>روابط منصات التواصل الاجتماعي (تظهر في الفوتر والناف بار)</span>
-                </h3>
+              {/* Section 2: Announcement Bar */}
+              <div className="space-y-4 pt-6 border-t border-pink-100">
+                <div className="flex items-center justify-between pb-2">
+                  <div className="flex items-center gap-2">
+                    <Megaphone className="w-5 h-5 text-rose-500" />
+                    <div>
+                      <h3 className="font-bold text-sm text-stone-900">شريط الإعلانات العلوي (Announcement Bar)</h3>
+                      <p className="text-[11px] text-stone-400">يظهر أعلى الهيدر في كل صفحات الموقع</p>
+                    </div>
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">رابط صفحة الفيسبوك (Facebook)</label>
-                  <input
-                    type="url"
-                    placeholder="https://facebook.com/your-page"
-                    value={settings.facebookUrl}
-                    onChange={(e) => setSettings({ ...settings, facebookUrl: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">رابط حساب الإنستغرام (Instagram)</label>
-                  <input
-                    type="url"
-                    placeholder="https://instagram.com/your-brand"
-                    value={settings.instagramUrl}
-                    onChange={(e) => setSettings({ ...settings, instagramUrl: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20 font-mono"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">رابط حساب التيك توك (TikTok)</label>
-                  <input
-                    type="url"
-                    placeholder="https://tiktok.com/@your-brand"
-                    value={settings.tiktokUrl}
-                    onChange={(e) => setSettings({ ...settings, tiktokUrl: e.target.value })}
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20 font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Announcement Bar & In-app promo */}
-              <div className="space-y-4 pt-4 border-t border-pink-100">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-xs text-stone-800 flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-rose-500" />
-                    <span>شريط الإعلانات الترويجي العلوي (Announcement Bar)</span>
-                  </h3>
-
-                  <label className="flex items-center gap-2 cursor-pointer">
+                  <label className="flex items-center gap-2 cursor-pointer bg-pink-50/80 px-3 py-1.5 rounded-xl border border-pink-200">
                     <input
                       type="checkbox"
                       checked={settings.announcementEnabled}
@@ -1604,14 +1985,69 @@ export default function AdminPage() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">نص الإعلان أو العرض الترويجي</label>
-                  <textarea
-                    rows={2}
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">نص الإعلان العلوي</label>
+                  <input
+                    type="text"
                     value={settings.announcementText}
                     onChange={(e) => setSettings({ ...settings, announcementText: e.target.value })}
-                    placeholder="اكتبي العرض الذي يظهر أعلى شاشة الموقع ولعميلات تطبيق PWA..."
-                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20"
-                  ></textarea>
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200"
+                  />
+                </div>
+              </div>
+
+              {/* Section 3: WhatsApp & Social Media Links */}
+              <div className="space-y-4 pt-6 border-t border-pink-100">
+                <div className="flex items-center gap-2 pb-2">
+                  <MessageCircle className="w-5 h-5 text-emerald-500" />
+                  <div>
+                    <h3 className="font-bold text-sm text-stone-900">رقم الواتساب وروابط التواصل الاجتماعي</h3>
+                    <p className="text-[11px] text-stone-400">يتم التحديث فوراً في كامل أزرار المتجر والفوتر</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    رقم الواتساب الرئيسي لاستقبال الطلبات والاستفسارات *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={settings.whatsappNumber}
+                    onChange={(e) => setSettings({ ...settings, whatsappNumber: e.target.value })}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 font-mono"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">رابط الفيسبوك</label>
+                    <input
+                      type="url"
+                      value={settings.facebookUrl}
+                      onChange={(e) => setSettings({ ...settings, facebookUrl: e.target.value })}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">رابط الإنستغرام</label>
+                    <input
+                      type="url"
+                      value={settings.instagramUrl}
+                      onChange={(e) => setSettings({ ...settings, instagramUrl: e.target.value })}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">رابط التيك توك</label>
+                    <input
+                      type="url"
+                      value={settings.tiktokUrl}
+                      onChange={(e) => setSettings({ ...settings, tiktokUrl: e.target.value })}
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 font-mono"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -1620,10 +2056,10 @@ export default function AdminPage() {
                 <button
                   type="submit"
                   disabled={savingSettings}
-                  className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-bold px-8 py-3 rounded-xl shadow-md transition flex items-center gap-2"
+                  className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-bold px-8 py-3.5 rounded-2xl shadow-md transition flex items-center gap-2"
                 >
                   {savingSettings ? (
-                    <span>جاري حفظ الإعدادات...</span>
+                    <span>جاري حفظ كافة الإعدادات...</span>
                   ) : (
                     <>
                       <Save className="w-4 h-4" />

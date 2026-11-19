@@ -20,6 +20,13 @@ export async function GET() {
           tiktokUrl: 'https://tiktok.com',
           announcementText: 'تألقي مع تشكيلة Fashion Zone الجديدة ✨ شحن مجاني للطلبات فوق 500 جنيه | كود خصم: GIRL10',
           announcementEnabled: true,
+          promoPopupTitle: 'عرض خاص وحصري لكِ يا جميلة ✨',
+          promoPopupText: 'خصم إضافي 10% بمناسبة إطلاق التشكيلة الجديدة! استخدمي كود الخصم الآن واستمتعي بشحن سريع لباب بيتك.',
+          promoCouponCode: 'GIRL10',
+          promoPopupEnabled: true,
+          heroBannerTitle: 'تشكيلة الخريف والشتاء الفاخرة',
+          heroBannerSubtitle: 'تألقي بأحدث فساتين السهرة والعبايات الراقية بتصميمات ساحرة',
+          heroBannerBadge: 'خصومات حصرية لفترة محدودة 🔥',
         },
       });
     }
@@ -38,6 +45,13 @@ export async function GET() {
         tiktokUrl: 'https://tiktok.com',
         announcementText: 'تألقي مع تشكيلة Fashion Zone الجديدة ✨ شحن مجاني للطلبات فوق 500 جنيه | كود خصم: GIRL10',
         announcementEnabled: true,
+        promoPopupTitle: 'عرض خاص وحصري لكِ يا جميلة ✨',
+        promoPopupText: 'خصم إضافي 10% بمناسبة إطلاق التشكيلة الجديدة! استخدمي كود الخصم الآن واستمتعي بشحن سريع لباب بيتك.',
+        promoCouponCode: 'GIRL10',
+        promoPopupEnabled: true,
+        heroBannerTitle: 'تشكيلة الخريف والشتاء الفاخرة',
+        heroBannerSubtitle: 'تألقي بأحدث فساتين السهرة والعبايات الراقية بتصميمات ساحرة',
+        heroBannerBadge: 'خصومات حصرية لفترة محدودة 🔥',
       },
     });
   }
@@ -54,19 +68,36 @@ export async function POST(request: Request) {
       tiktokUrl,
       announcementText,
       announcementEnabled,
+      promoPopupTitle,
+      promoPopupText,
+      promoPopupImage,
+      promoCouponCode,
+      promoPopupEnabled,
+      heroBannerTitle,
+      heroBannerSubtitle,
+      heroBannerBadge,
     } = body;
+
+    const dataPayload: any = {};
+    if (storeName !== undefined) dataPayload.storeName = storeName;
+    if (whatsappNumber !== undefined) dataPayload.whatsappNumber = whatsappNumber;
+    if (facebookUrl !== undefined) dataPayload.facebookUrl = facebookUrl;
+    if (instagramUrl !== undefined) dataPayload.instagramUrl = instagramUrl;
+    if (tiktokUrl !== undefined) dataPayload.tiktokUrl = tiktokUrl;
+    if (announcementText !== undefined) dataPayload.announcementText = announcementText;
+    if (announcementEnabled !== undefined) dataPayload.announcementEnabled = Boolean(announcementEnabled);
+    if (promoPopupTitle !== undefined) dataPayload.promoPopupTitle = promoPopupTitle;
+    if (promoPopupText !== undefined) dataPayload.promoPopupText = promoPopupText;
+    if (promoPopupImage !== undefined) dataPayload.promoPopupImage = promoPopupImage;
+    if (promoCouponCode !== undefined) dataPayload.promoCouponCode = promoCouponCode;
+    if (promoPopupEnabled !== undefined) dataPayload.promoPopupEnabled = Boolean(promoPopupEnabled);
+    if (heroBannerTitle !== undefined) dataPayload.heroBannerTitle = heroBannerTitle;
+    if (heroBannerSubtitle !== undefined) dataPayload.heroBannerSubtitle = heroBannerSubtitle;
+    if (heroBannerBadge !== undefined) dataPayload.heroBannerBadge = heroBannerBadge;
 
     const updated = await prisma.siteSettings.upsert({
       where: { id: 'default' },
-      update: {
-        storeName,
-        whatsappNumber,
-        facebookUrl,
-        instagramUrl,
-        tiktokUrl,
-        announcementText,
-        announcementEnabled: Boolean(announcementEnabled),
-      },
+      update: dataPayload,
       create: {
         id: 'default',
         storeName: storeName || 'Fashion Zone',
@@ -75,7 +106,15 @@ export async function POST(request: Request) {
         instagramUrl: instagramUrl || 'https://instagram.com',
         tiktokUrl: tiktokUrl || 'https://tiktok.com',
         announcementText: announcementText || 'تألقي مع تشكيلة Fashion Zone الجديدة ✨',
-        announcementEnabled: Boolean(announcementEnabled),
+        announcementEnabled: announcementEnabled !== undefined ? Boolean(announcementEnabled) : true,
+        promoPopupTitle: promoPopupTitle || 'عرض خاص وحصري لكِ يا جميلة ✨',
+        promoPopupText: promoPopupText || '',
+        promoPopupImage: promoPopupImage || null,
+        promoCouponCode: promoCouponCode || 'GIRL10',
+        promoPopupEnabled: promoPopupEnabled !== undefined ? Boolean(promoPopupEnabled) : true,
+        heroBannerTitle: heroBannerTitle || 'تشكيلة الخريف والشتاء الفاخرة',
+        heroBannerSubtitle: heroBannerSubtitle || 'تألقي بأحدث فساتين السهرة والعبايات الراقية بتصميمات ساحرة',
+        heroBannerBadge: heroBannerBadge || 'خصومات حصرية لفترة محدودة 🔥',
       },
     });
 

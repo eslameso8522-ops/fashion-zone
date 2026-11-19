@@ -1,38 +1,46 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Heart, ShoppingBag, Search, Menu, X, Sparkles, MessageCircle, Lock, Truck } from 'lucide-react';
+import Image from 'next/image';
+import {
+  Heart,
+  ShoppingBag,
+  Search,
+  Menu,
+  X,
+  Sparkles,
+  MessageCircle,
+  Truck,
+  ChevronDown,
+  Flame,
+  ArrowLeft,
+  Gift,
+} from 'lucide-react';
 import { useCart } from '@/lib/cartContext';
 
 interface CategoryItem {
   id: string;
   name: string;
   slug: string;
+  image?: string;
   showInNavbar?: boolean;
+  itemCount?: number;
 }
 
 export default function Navbar() {
   const { cartCount, wishlist } = useCart();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [categoriesDropdownOpen, setCategoriesDropdownOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [categories, setCategories] = useState<CategoryItem[]>([]);
   const [whatsappNumber, setWhatsappNumber] = useState('201000000000');
-
-  // Default fallback links if database is loading or empty
-  const defaultLinks = [
-    { name: 'الرئيسية', href: '/' },
-    { name: 'فساتين سهرة', href: '/category/dresses' },
-    { name: 'عبايات وكيمونو', href: '/category/abayas' },
-    { name: 'حقائب فاخرة', href: '/category/bags' },
-    { name: 'مجوهرات وإكسسوار', href: '/category/jewelry' },
-    { name: 'عطور راقية', href: '/category/perfumes' },
-  ];
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Fetch dynamic categories and site settings
   useEffect(() => {
-    // 1. Fetch categories enabled for navbar
+    // 1. Fetch categories
     fetch('/api/categories?navbar=true')
       .then((res) => res.json())
       .then((data) => {
@@ -42,7 +50,7 @@ export default function Navbar() {
       })
       .catch(() => {});
 
-    // 2. Fetch site settings (WhatsApp number)
+    // 2. Fetch site settings
     fetch('/api/settings')
       .then((res) => res.json())
       .then((data) => {
@@ -51,19 +59,16 @@ export default function Navbar() {
         }
       })
       .catch(() => {});
-  }, []);
 
-  // Compute final navigation links
-  const activeNavLinks =
-    categories.length > 0
-      ? [
-          { name: 'الرئيسية', href: '/' },
-          ...categories.map((cat) => ({
-            name: cat.name,
-            href: `/category/${cat.slug}`,
-          })),
-        ]
-      : defaultLinks;
+    // Close dropdown on outside click
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setCategoriesDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-pink-100 shadow-sm transition-all">
@@ -74,21 +79,21 @@ export default function Navbar() {
           <div className="flex items-center lg:hidden">
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 text-stone-700 hover:text-rose-500 rounded-lg transition"
+              className="p-2 text-stone-700 hover:text-rose-500 rounded-xl transition"
               aria-label="القائمة"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
 
-          {/* Boutique Logo */}
+          {/* Boutique Luxury Logo */}
           <div className="flex-shrink-0 flex items-center gap-2">
-            <Link href="/" className="group flex items-center gap-2">
-              <span className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-400 to-rose-500 flex items-center justify-center text-white shadow-soft-pink group-hover:scale-105 transition-transform">
+            <Link href="/" className="group flex items-center gap-2.5">
+              <span className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-400 via-rose-500 to-pink-500 flex items-center justify-center text-white shadow-soft-pink group-hover:scale-105 transition-transform">
                 <Sparkles className="w-5 h-5 text-white" />
               </span>
               <div className="flex flex-col">
-                <span className="text-2xl font-black tracking-wider bg-gradient-to-r from-rose-600 via-pink-500 to-rose-400 bg-clip-text text-transparent font-serif">
+                <span className="text-xl sm:text-2xl font-black tracking-wider bg-gradient-to-r from-rose-600 via-pink-500 to-rose-400 bg-clip-text text-transparent font-serif">
                   Fashion Zone
                 </span>
                 <span className="text-[10px] tracking-widest text-rosegold-500 font-semibold -mt-1 uppercase">
@@ -98,36 +103,146 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* Desktop Dynamic Navigation Links */}
-          <nav className="hidden lg:flex items-center gap-6 xl:gap-8">
-            {activeNavLinks.map((link) => (
-              <Link
-                key={link.name}
-                href={link.href}
-                className="text-sm font-semibold text-stone-700 hover:text-rose-500 transition-colors py-1 relative group whitespace-nowrap"
-              >
-                {link.name}
-                <span className="absolute bottom-0 right-0 w-0 h-0.5 bg-rose-400 rounded-full transition-all duration-300 group-hover:w-full"></span>
-              </Link>
-            ))}
+          {/* Desktop Navigation Links with Sleek Mega Dropdown */}
+          <nav className="hidden lg:flex items-center gap-7">
+            {/* Home */}
+            <Link
+              href="/"
+              className="text-sm font-bold text-stone-700 hover:text-rose-600 transition py-1 relative group"
+            >
+              الرئيسية
+              <span className="absolute bottom-0 right-0 w-0 h-0.5 bg-rose-500 rounded-full transition-all duration-300 group-hover:w-full"></span>
+            </Link>
 
-            {/* Direct Tracking Link */}
+            {/* Categories Rich Dropdown (Mega Menu) */}
+            <div
+              ref={dropdownRef}
+              className="relative"
+              onMouseEnter={() => setCategoriesDropdownOpen(true)}
+              onMouseLeave={() => setCategoriesDropdownOpen(false)}
+            >
+              <button
+                onClick={() => setCategoriesDropdownOpen(!categoriesDropdownOpen)}
+                className="flex items-center gap-1.5 text-sm font-bold text-stone-700 hover:text-rose-600 transition py-2 group"
+              >
+                <span>الأقسام والتشكيلات</span>
+                <ChevronDown
+                  className={`w-4 h-4 text-stone-400 group-hover:text-rose-500 transition-transform duration-200 ${
+                    categoriesDropdownOpen ? 'rotate-180 text-rose-500' : ''
+                  }`}
+                />
+              </button>
+
+              {/* Luxury Mega Dropdown Card with Photos */}
+              {categoriesDropdownOpen && (
+                <div className="absolute right-0 top-full pt-2 w-[540px] z-50 animate-fadeIn">
+                  <div className="bg-white/98 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-pink-100 ring-1 ring-black/5">
+                    
+                    <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-pink-100">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-rose-500" />
+                        <span className="text-xs font-extrabold text-stone-900 font-serif">
+                          تشكيلات وأقسام Fashion Zone الفاخرة
+                        </span>
+                      </div>
+                      <Link
+                        href="/search"
+                        onClick={() => setCategoriesDropdownOpen(false)}
+                        className="text-[11px] font-bold text-rose-600 hover:underline flex items-center gap-1"
+                      >
+                        <span>تصفحي كافة المنتجات</span>
+                        <ArrowLeft className="w-3 h-3" />
+                      </Link>
+                    </div>
+
+                    {/* Categories Grid with Images */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {categories.map((cat) => (
+                        <Link
+                          key={cat.id}
+                          href={`/category/${cat.slug}`}
+                          onClick={() => setCategoriesDropdownOpen(false)}
+                          className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-pink-50/70 border border-transparent hover:border-pink-200/80 transition group"
+                        >
+                          <div className="w-12 h-14 relative rounded-xl overflow-hidden bg-pink-100 flex-shrink-0 border border-pink-200/60 shadow-sm group-hover:scale-105 transition-transform">
+                            {cat.image ? (
+                              <Image
+                                src={cat.image}
+                                alt={cat.name}
+                                fill
+                                className="object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-xs">✨</div>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-stone-800 group-hover:text-rose-600 text-xs sm:text-sm transition">
+                              {cat.name}
+                            </h4>
+                            <span className="text-[11px] text-stone-400 group-hover:text-rose-500 flex items-center gap-1 mt-0.5">
+                              <span>تصفحي القسم</span>
+                              <span className="group-hover:-translate-x-1 transition-transform">←</span>
+                            </span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+
+                    {/* Bottom Promo Strip inside Dropdown */}
+                    <div className="mt-4 pt-3.5 border-t border-pink-100/80 flex items-center justify-between bg-gradient-to-r from-pink-50/70 to-rose-50/50 p-3 rounded-2xl">
+                      <div className="flex items-center gap-2">
+                        <Gift className="w-4 h-4 text-rose-500" />
+                        <span className="text-xs text-stone-700 font-semibold">
+                          كود خصم إضافي <strong>10%</strong> للطلبات فوق 200 ج.م
+                        </span>
+                      </div>
+                      <span className="font-mono text-xs font-black text-rose-600 bg-white px-2.5 py-1 rounded-lg border border-pink-200">
+                        GIRL10
+                      </span>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* New Arrivals */}
+            <Link
+              href="/search?filter=new"
+              className="text-sm font-bold text-stone-700 hover:text-rose-600 transition py-1 relative group"
+            >
+              وصل حديثاً 🎀
+              <span className="absolute bottom-0 right-0 w-0 h-0.5 bg-rose-500 rounded-full transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+
+            {/* Exclusive Offers */}
+            <Link
+              href="/search?filter=sale"
+              className="flex items-center gap-1 text-sm font-bold text-rose-600 hover:text-rose-700 transition py-1 relative group"
+            >
+              <Flame className="w-4 h-4 text-rose-500 animate-pulse" />
+              <span>تخفيضات حصرية</span>
+              <span className="absolute bottom-0 right-0 w-0 h-0.5 bg-rose-500 rounded-full transition-all duration-300 group-hover:w-full"></span>
+            </Link>
+
+            {/* Beautiful, Proportional Track Order Pill Badge */}
             <Link
               href="/track"
-              className="inline-flex items-center gap-1.5 bg-pink-50 hover:bg-pink-100 text-rose-600 border border-pink-200 px-3 py-1 rounded-full text-xs font-bold transition shadow-sm"
-              title="تتبعي حالة شحنتك"
+              className="inline-flex items-center gap-1.5 bg-pink-50/80 hover:bg-pink-100 text-rose-600 border border-pink-200/90 px-3.5 py-1.5 rounded-full text-xs font-bold transition shadow-sm hover:scale-105 active:scale-95"
+              title="تتبعي حالة طلبكِ وشحنتكِ"
             >
-              <Truck className="w-3.5 h-3.5" />
-              <span>تتبع طلبك 🚚</span>
+              <Truck className="w-3.5 h-3.5 text-rose-500" />
+              <span>تتبع طلبكِ 🚚</span>
             </Link>
           </nav>
 
-          {/* Action Icons & Fast Help */}
+          {/* Action Icons & Fast Customer Help */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Search Toggle */}
             <button
               onClick={() => setSearchOpen(!searchOpen)}
-              className="p-2.5 text-stone-600 hover:text-rose-500 hover:bg-pink-50 rounded-full transition"
+              className="p-2.5 text-stone-600 hover:text-rose-600 hover:bg-pink-50 rounded-full transition"
               title="بحث في المتجر"
             >
               <Search className="w-5 h-5" />
@@ -136,12 +251,12 @@ export default function Navbar() {
             {/* Wishlist Link */}
             <Link
               href="/wishlist"
-              className="p-2.5 text-stone-600 hover:text-rose-500 hover:bg-pink-50 rounded-full transition relative"
+              className="p-2.5 text-stone-600 hover:text-rose-600 hover:bg-pink-50 rounded-full transition relative"
               title="المفضلة"
             >
               <Heart className="w-5 h-5" />
               {wishlist.length > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-bounce">
+                <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-bounce">
                   {wishlist.length}
                 </span>
               )}
@@ -150,24 +265,15 @@ export default function Navbar() {
             {/* Cart Link */}
             <Link
               href="/cart"
-              className="p-2.5 text-stone-600 hover:text-rose-500 hover:bg-pink-50 rounded-full transition relative"
+              className="p-2.5 text-stone-600 hover:text-rose-600 hover:bg-pink-50 rounded-full transition relative"
               title="سلة التسوق"
             >
               <ShoppingBag className="w-5 h-5" />
               {cartCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
                   {cartCount}
                 </span>
               )}
-            </Link>
-
-            {/* Admin Dashboard Access Link */}
-            <Link
-              href="/admin/login"
-              className="p-2.5 text-stone-400 hover:text-rose-600 hover:bg-pink-50 rounded-full transition"
-              title="لوحة تحكم الإدارة"
-            >
-              <Lock className="w-4 h-4" />
             </Link>
 
             {/* Direct WhatsApp help button */}
@@ -216,49 +322,101 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* Mobile Navigation Drawer */}
+        {/* Mobile Navigation Drawer (NO ADMIN LOGIN BUTTON AS REQUESTED) */}
         {mobileMenuOpen && (
-          <div className="lg:hidden py-4 border-t border-pink-100 space-y-2 animate-fadeIn">
-            {activeNavLinks.map((link) => (
-              <Link
-                key={link.name}
-                href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className="block px-4 py-2.5 text-base font-semibold text-stone-700 hover:bg-pink-50 hover:text-rose-500 rounded-xl transition"
-              >
-                {link.name}
-              </Link>
-            ))}
+          <div className="lg:hidden py-4 border-t border-pink-100 space-y-3 animate-fadeIn">
+            
+            {/* Mobile Search */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (searchQuery.trim()) {
+                  window.location.href = `/search?q=${encodeURIComponent(searchQuery)}`;
+                }
+              }}
+              className="relative px-2 mb-2"
+            >
+              <input
+                type="text"
+                placeholder="ابحثي في المتجر..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-4 py-2 rounded-xl border border-pink-200 bg-pink-50/40 text-xs"
+              />
+              <Search className="w-4 h-4 text-rose-400 absolute left-5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </form>
 
-            <div className="pt-2 px-4 space-y-2">
+            <Link
+              href="/"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-2 text-sm font-bold text-stone-800 hover:bg-pink-50 hover:text-rose-600 rounded-xl transition"
+            >
+              الرئيسية
+            </Link>
+
+            {/* Mobile Categories Accordion with Photos */}
+            <div className="px-3 py-2 bg-pink-50/30 rounded-2xl border border-pink-100/60 space-y-2">
+              <span className="text-[11px] font-bold text-stone-500 px-1 block">أقسام وتشكيلات المتجر:</span>
+              <div className="grid grid-cols-1 gap-1.5">
+                {categories.map((cat) => (
+                  <Link
+                    key={cat.id}
+                    href={`/category/${cat.slug}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-2.5 p-2 rounded-xl bg-white hover:bg-pink-50 border border-pink-100/60 transition"
+                  >
+                    <div className="w-8 h-9 relative rounded-lg overflow-hidden bg-pink-100 flex-shrink-0">
+                      {cat.image ? (
+                        <Image src={cat.image} alt={cat.name} fill className="object-cover" />
+                      ) : (
+                        <span className="text-xs">✨</span>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-stone-800">{cat.name}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <Link
+              href="/search?filter=new"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block px-4 py-2 text-sm font-bold text-stone-800 hover:bg-pink-50 hover:text-rose-600 rounded-xl transition"
+            >
+              وصل حديثاً 🎀
+            </Link>
+
+            <Link
+              href="/search?filter=sale"
+              onClick={() => setMobileMenuOpen(false)}
+              className="flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-rose-600 hover:bg-pink-50 rounded-xl transition"
+            >
+              <Flame className="w-4 h-4" />
+              <span>تخفيضات حصرية 🔥</span>
+            </Link>
+
+            {/* Prominent Track Order Link */}
+            <div className="pt-2 px-2 space-y-2">
               <Link
                 href="/track"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-center gap-2 w-full bg-rose-50 text-rose-600 hover:bg-rose-100 py-2.5 rounded-xl font-bold text-sm border border-rose-200 transition"
+                className="flex items-center justify-center gap-2 w-full bg-rose-50 text-rose-600 hover:bg-rose-100 py-3 rounded-2xl font-bold text-xs border border-rose-200 transition shadow-sm"
               >
                 <Truck className="w-4 h-4" />
-                <span>تتبع طلبك الآن 🚚</span>
-              </Link>
-
-              <Link
-                href="/admin/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-center gap-2 w-full bg-stone-100 text-stone-700 hover:bg-stone-200 py-2.5 rounded-xl font-bold text-sm border border-stone-200 transition"
-              >
-                <Lock className="w-4 h-4" />
-                <span>دخول لوحة تحكم الإدارة</span>
+                <span>تتبعي حالة طلبكِ الآن 🚚</span>
               </Link>
 
               <a
                 href={`https://wa.me/${whatsappNumber}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full bg-emerald-500 text-white py-2.5 rounded-xl font-bold text-sm shadow-sm"
+                className="flex items-center justify-center gap-2 w-full bg-emerald-500 text-white py-3 rounded-2xl font-bold text-xs shadow-sm hover:bg-emerald-600 transition"
               >
                 <MessageCircle className="w-4 h-4" />
-                <span>تواصل مباشر عبر واتساب</span>
+                <span>محادثة واتساب فورية</span>
               </a>
             </div>
+
           </div>
         )}
       </div>

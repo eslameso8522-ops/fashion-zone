@@ -1,12 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Download, Bell, BellRing, Sparkles, X, Check, Copy } from 'lucide-react';
+import Image from 'next/image';
+import { Download, BellRing, Sparkles, X, Check, Copy, Gift } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
 interface SettingsData {
   announcementText?: string;
   announcementEnabled?: boolean;
+  promoPopupTitle?: string;
+  promoPopupText?: string;
+  promoPopupImage?: string;
+  promoCouponCode?: string;
+  promoPopupEnabled?: boolean;
 }
 
 export default function PwaNotificationBanner() {
@@ -14,7 +20,7 @@ export default function PwaNotificationBanner() {
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
   const [showPromoPopup, setShowPromoPopup] = useState(false);
-  const [promoText, setPromoText] = useState('');
+  const [settings, setSettings] = useState<SettingsData | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
 
   useEffect(() => {
@@ -35,7 +41,6 @@ export default function PwaNotificationBanner() {
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Check if user previously dismissed install banner in this session
       const dismissed = sessionStorage.getItem('fz_install_dismissed');
       if (!dismissed) {
         setShowInstallBanner(true);
@@ -44,16 +49,18 @@ export default function PwaNotificationBanner() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
 
-    // 4. Fetch announcement and check for promo popup
+    // 4. Fetch dynamic ads & promo popup settings
     fetch('/api/settings')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.settings?.announcementEnabled) {
-          setPromoText(data.settings.announcementText || '');
-          const promoDismissed = sessionStorage.getItem('fz_promo_dismissed');
-          if (!promoDismissed) {
-            // Show after 3 seconds for friendly experience
-            setTimeout(() => setShowPromoPopup(true), 3000);
+        if (data.success && data.settings) {
+          setSettings(data.settings);
+          if (data.settings.promoPopupEnabled) {
+            const promoDismissed = sessionStorage.getItem('fz_promo_dismissed');
+            if (!promoDismissed) {
+              // Friendly delay (2.5 seconds)
+              setTimeout(() => setShowPromoPopup(true), 2500);
+            }
           }
         }
       })
@@ -76,13 +83,12 @@ export default function PwaNotificationBanner() {
     setShowInstallBanner(false);
   };
 
-  // Dismiss Install Banner
   const dismissInstall = () => {
     setShowInstallBanner(false);
     sessionStorage.setItem('fz_install_dismissed', 'true');
   };
 
-  // Handle Request Notifications Permission
+  // Handle Web Push Notifications
   const handleEnableNotifications = async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) {
       alert('المتصفح الحالي لا يدعم إشعارات الويب.');
@@ -94,12 +100,11 @@ export default function PwaNotificationBanner() {
       setNotificationPermission(permission);
 
       if (permission === 'granted') {
-        confetti({ particleCount: 50, spread: 60 });
-        // Send a friendly welcome test notification
+        confetti({ particleCount: 60, spread: 60 });
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.ready.then((reg) => {
             reg.showNotification('مرحباً بكِ في Fashion Zone ✨', {
-              body: 'تم تفعيل إشعارات العروض بنجاح! سنرسل لكِ أحدث التشكيلات وكوبونات الخصم فور نزولها.',
+              body: 'تم تفعيل إشعارات العروض بنجاح! ستصلكِ أحدث التشكيلات وكوبونات الخصم فور نزولها.',
               icon: '/icon.png',
               badge: '/icon.png',
             });
@@ -111,11 +116,11 @@ export default function PwaNotificationBanner() {
     }
   };
 
-  // Copy promo coupon code
+  // Copy coupon code
   const handleCopyCoupon = (code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedCode(true);
-    confetti({ particleCount: 40, spread: 50 });
+    confetti({ particleCount: 50, spread: 60 });
     setTimeout(() => setCopiedCode(false), 2500);
   };
 
@@ -123,6 +128,12 @@ export default function PwaNotificationBanner() {
     setShowPromoPopup(false);
     sessionStorage.setItem('fz_promo_dismissed', 'true');
   };
+
+  const couponCode = settings?.promoCouponCode || 'GIRL10';
+  const promoTitle = settings?.promoPopupTitle || 'عرض خاص وحصري لكِ يا جميلة ✨';
+  const promoText =
+    settings?.promoPopupText ||
+    'استخدمي كود الخصم الحصري للحصول على خصم إضافي 10% على جميع فساتين السهرة والعبايات والحقائب!';
 
   return (
     <>
@@ -135,7 +146,7 @@ export default function PwaNotificationBanner() {
                 <Download className="w-6 h-6 animate-bounce" />
               </div>
               <div>
-                <h4 className="font-bold text-xs sm:text-sm text-stone-900">تطبيق Fashion Zone على هاتفك</h4>
+                <h4 className="font-bold text-xs sm:text-sm text-stone-900">تطبيق Fashion Zone على هاتفكِ</h4>
                 <p className="text-[11px] text-stone-500">تصفح أسرع، بدون استهلاك باقة، وعروض فورية</p>
               </div>
             </div>
@@ -159,12 +170,12 @@ export default function PwaNotificationBanner() {
         </div>
       )}
 
-      {/* 2. Notification Permission Floating Pill (Shown if permission is still default) */}
+      {/* 2. Notification Permission Floating Pill */}
       {notificationPermission === 'default' && (
         <div className="fixed bottom-24 left-4 z-40 hidden md:block animate-fadeIn">
           <button
             onClick={handleEnableNotifications}
-            className="flex items-center gap-2 bg-white/90 backdrop-blur-md border border-pink-200 text-rose-600 hover:bg-rose-50 px-3.5 py-2 rounded-full text-xs font-bold shadow-lg hover:scale-105 transition group"
+            className="flex items-center gap-2 bg-white/95 backdrop-blur-md border border-pink-200 text-rose-600 hover:bg-rose-50 px-3.5 py-2 rounded-full text-xs font-bold shadow-lg hover:scale-105 transition group"
             title="تفعيل إشعارات العروض"
           >
             <BellRing className="w-4 h-4 text-rose-500 group-hover:rotate-12 transition-transform" />
@@ -173,63 +184,84 @@ export default function PwaNotificationBanner() {
         </div>
       )}
 
-      {/* 3. In-App Announcement / Promo Modal */}
-      {showPromoPopup && promoText && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fadeIn">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl border border-pink-100 relative animate-scaleUp">
+      {/* 3. Professional In-App Promo Modal (Managed from Admin Dashboard) */}
+      {showPromoPopup && settings?.promoPopupEnabled && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fadeIn">
+          <div className="bg-white rounded-3xl max-w-sm sm:max-w-md w-full overflow-hidden shadow-2xl border border-pink-100 relative animate-scaleUp">
+            
             <button
               onClick={dismissPromo}
-              className="absolute top-4 left-4 text-stone-400 hover:text-stone-700 p-1.5 rounded-full hover:bg-pink-50 transition"
+              className="absolute top-4 left-4 z-10 bg-white/80 backdrop-blur-md text-stone-500 hover:text-stone-900 p-1.5 rounded-full hover:bg-white shadow-sm transition"
+              aria-label="إغلاق"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="w-16 h-16 mx-auto rounded-3xl bg-gradient-to-tr from-rose-500 via-pink-400 to-rose-300 text-white flex items-center justify-center shadow-lg shadow-pink-200">
-              <Sparkles className="w-8 h-8 animate-spin-slow" />
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-rose-500 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
-                عرض خاص وحصري ✨
-              </span>
-              <h3 className="text-lg font-black text-stone-900 pt-2 font-serif">
-                مرحباً بكِ في Fashion Zone
-              </h3>
-              <p className="text-xs text-stone-600 leading-relaxed pt-1">
-                {promoText}
-              </p>
-            </div>
-
-            {/* Coupon Code Action */}
-            <div className="bg-pink-50/80 p-3 rounded-2xl border border-dashed border-rose-300 flex items-center justify-between gap-2">
-              <div className="text-right">
-                <span className="text-[10px] text-stone-500 block">كود الخصم الإضافي:</span>
-                <span className="font-mono font-black text-sm text-rose-600 tracking-wider">GIRL10</span>
+            {/* Optional Ad Image uploaded by Admin */}
+            {settings?.promoPopupImage ? (
+              <div className="relative w-full h-44 bg-pink-100">
+                <Image
+                  src={settings.promoPopupImage}
+                  alt={promoTitle}
+                  fill
+                  className="object-cover"
+                />
               </div>
+            ) : (
+              <div className="bg-gradient-to-r from-rose-500 via-pink-500 to-rose-400 p-6 text-center text-white">
+                <div className="w-14 h-14 mx-auto rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2 shadow-inner">
+                  <Sparkles className="w-7 h-7 text-white" />
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-wider bg-white/20 px-3 py-1 rounded-full">
+                  هدية خاصة لكِ 🎁
+                </span>
+              </div>
+            )}
+
+            <div className="p-6 text-center space-y-4">
+              <div className="space-y-1.5">
+                <h3 className="text-lg font-black text-stone-900 font-serif">
+                  {promoTitle}
+                </h3>
+                <p className="text-xs text-stone-600 leading-relaxed">
+                  {promoText}
+                </p>
+              </div>
+
+              {/* Coupon Code Box */}
+              <div className="bg-pink-50/90 p-3.5 rounded-2xl border border-dashed border-rose-300 flex items-center justify-between gap-2">
+                <div className="text-right">
+                  <span className="text-[10px] text-stone-500 block font-semibold">كود الخصم الحصري:</span>
+                  <span className="font-mono font-black text-base text-rose-600 tracking-wider">
+                    {couponCode}
+                  </span>
+                </div>
+                <button
+                  onClick={() => handleCopyCoupon(couponCode)}
+                  className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition active:scale-95 shadow-sm"
+                >
+                  {copiedCode ? (
+                    <>
+                      <Check className="w-3.5 h-3.5 text-white" />
+                      <span>تم النسخ!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>نسخ الكود</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
               <button
-                onClick={() => handleCopyCoupon('GIRL10')}
-                className="flex items-center gap-1.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-3 py-2 rounded-xl transition active:scale-95 shadow-sm"
+                onClick={dismissPromo}
+                className="w-full bg-stone-900 hover:bg-black text-white text-xs font-bold py-3.5 rounded-2xl transition shadow-md"
               >
-                {copiedCode ? (
-                  <>
-                    <Check className="w-3.5 h-3.5 text-white" />
-                    <span>تم النسخ!</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="w-3.5 h-3.5" />
-                    <span>نسخ الكود</span>
-                  </>
-                )}
+                تسوّقي التشكيلة الآن 🛍️
               </button>
             </div>
 
-            <button
-              onClick={dismissPromo}
-              className="w-full bg-stone-900 hover:bg-black text-white text-xs font-bold py-3 rounded-2xl transition shadow-md"
-            >
-              تسوقي العروض الآن 🛍️
-            </button>
           </div>
         </div>
       )}

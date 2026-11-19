@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ShoppingBag, Trash2, ArrowLeft, MessageCircle, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ShoppingBag, Trash2, ArrowLeft, MessageCircle, Sparkles, CheckCircle2, Tag, Check, X, AlertCircle } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '@/lib/cartContext';
 
@@ -13,8 +13,69 @@ export default function CartPage() {
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
 
-  const shippingFee = cartTotal >= 500 || cartTotal === 0 ? 0 : 50;
-  const grandTotal = cartTotal + shippingFee;
+  // Coupon state
+  const [couponCodeInput, setCouponCodeInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{
+    code: string;
+    discountAmount: number;
+    description?: string;
+  } | null>(null);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('201000000000');
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings?.whatsappNumber) {
+          setWhatsappNumber(data.settings.whatsappNumber);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
+  const discountedSubtotal = Math.max(0, cartTotal - discountAmount);
+  const shippingFee = discountedSubtotal >= 500 || cartTotal === 0 ? 0 : 50;
+  const grandTotal = discountedSubtotal + shippingFee;
+
+  // Apply Coupon
+  const handleApplyCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!couponCodeInput.trim()) return;
+
+    setCouponLoading(true);
+    setCouponError('');
+
+    try {
+      const res = await fetch(
+        `/api/coupons?code=${encodeURIComponent(couponCodeInput.trim())}&total=${cartTotal}`
+      );
+      const data = await res.json();
+
+      if (data.success) {
+        setAppliedCoupon({
+          code: data.coupon.code,
+          discountAmount: data.discountAmount,
+          description: data.coupon.description,
+        });
+        confetti({ particleCount: 70, spread: 60 });
+        setCouponCodeInput('');
+      } else {
+        setCouponError(data.error || 'كود الخصم غير صحيح');
+      }
+    } catch (err) {
+      setCouponError('تعذر التحقق من كود الخصم حالياً');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError('');
+  };
 
   const handleCheckoutViaWhatsApp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,11 +85,11 @@ export default function CartPage() {
         particleCount: 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: ['#f43f5e', '#fb7185', '#fda4af', '#fecdd3', '#ffffff']
+        colors: ['#f43f5e', '#fb7185', '#fda4af', '#fecdd3', '#ffffff'],
       });
     } catch {}
 
-    // Save order in MySQL database in background
+    // Save order in MySQL database
     try {
       fetch('/api/orders', {
         method: 'POST',
@@ -46,19 +107,29 @@ export default function CartPage() {
             color: item.selectedColor,
           })),
           total: grandTotal,
-          notes: `طلب سلة مشتريات (${cartCount} قطع) - الشحن: ${shippingFee} جنيه`,
+          discountAmount: discountAmount,
+          couponCode: appliedCoupon?.code || null,
+          notes: `طلب سلة مشتريات (${cartCount} قطع)${
+            appliedCoupon ? ` - كود خصم: ${appliedCoupon.code} (وفّر: ${discountAmount} ج.م)` : ''
+          } - الشحن: ${shippingFee} جنيه`,
         }),
       }).catch(console.error);
     } catch {}
 
-    const storeWhatsAppNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '201000000000';
-
     const itemsSummary = cart
       .map(
         (item, index) =>
-          `${index + 1}. *${item.product.name}* \n   - الكمية: ${item.quantity}\n   - المقاس: ${item.selectedSize || 'افتراضي'}\n   - اللون: ${item.selectedColor || 'افتراضي'}\n   - السعر: ${item.product.price * item.quantity} جنيه`
+          `${index + 1}. *${item.product.name}* \n   - الكمية: ${item.quantity}\n   - المقاس: ${
+            item.selectedSize || 'افتراضي'
+          }\n   - اللون: ${item.selectedColor || 'افتراضي'}\n   - السعر: ${
+            item.product.price * item.quantity
+          } جنيه`
       )
       .join('\n\n');
+
+    const couponLine = appliedCoupon
+      ? `🎟️ *كود الخصم المطبق:* ${appliedCoupon.code} (-${discountAmount} جنيه)\n`
+      : '';
 
     const orderMessage = `*طلب شراء جديد من متجر Fashion Zone 🛍️*
 -----------------------------
@@ -70,12 +141,12 @@ export default function CartPage() {
 ${itemsSummary}
 -----------------------------
 💰 *إجمالي المنتجات:* ${cartTotal} جنيه
-🚚 *الشحن:* ${shippingFee === 0 ? 'مجاني 🎉' : `${shippingFee} جنيه`}
+${couponLine}🚚 *الشحن:* ${shippingFee === 0 ? 'مجاني 🎉' : `${shippingFee} جنيه`}
 💎 *المبلغ الإجمالي المستحق:* ${grandTotal} جنيه
 -----------------------------
 _الدفع عند الاستلام بعد المعاينة_`;
 
-    const url = `https://wa.me/${storeWhatsAppNumber}?text=${encodeURIComponent(orderMessage)}`;
+    const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(orderMessage)}`;
     window.open(url, '_blank');
   };
 
@@ -106,45 +177,51 @@ _الدفع عند الاستلام بعد المعاينة_`;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-      <div className="flex items-center justify-between mb-8">
+      
+      <div className="flex items-center justify-between pb-6 border-b border-pink-100">
         <div>
-          <span className="text-xs font-bold text-rose-500 tracking-wider uppercase">سلة التسوق</span>
           <h1 className="text-2xl sm:text-3xl font-black text-stone-900 font-serif">
-            مشترياتك الأنيقة ({cartCount} قطع)
+            سلة مشترياتكِ الأنيقة 🛍️
           </h1>
+          <p className="text-xs sm:text-sm text-stone-500 mt-1">
+            لديكِ {cartCount} قطعة في السلة، راجعي المقاسات والألوان قبل الإرسال
+          </p>
         </div>
+
         <button
           onClick={clearCart}
-          className="text-xs text-rose-600 hover:text-rose-800 font-semibold underline"
+          className="text-xs text-stone-400 hover:text-rose-600 transition underline"
         >
           إفراغ السلة
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
         
-        {/* Cart Items List */}
+        {/* Cart Items List (2 Cols) */}
         <div className="lg:col-span-2 space-y-4">
-          {cart.map((item, idx) => (
+          {cart.map((item, index) => (
             <div
-              key={`${item.product.id}-${item.selectedSize}-${item.selectedColor}-${idx}`}
-              className="flex items-center gap-4 p-4 rounded-3xl bg-white border border-pink-100 shadow-sm"
+              key={`${item.product.id}-${item.selectedSize}-${item.selectedColor}-${index}`}
+              className="flex gap-4 p-4 rounded-3xl bg-white border border-pink-100 shadow-sm hover:shadow-md transition"
             >
-              {/* Product Thumbnail */}
-              <div className="relative w-20 h-24 sm:w-24 sm:h-28 rounded-2xl overflow-hidden bg-pink-50 flex-shrink-0">
-                <Image
-                  src={item.product.images[0]}
-                  alt={item.product.name}
-                  fill
-                  className="object-cover"
-                />
+              <div className="w-20 h-24 sm:w-24 sm:h-28 relative rounded-2xl overflow-hidden bg-pink-50 flex-shrink-0">
+                {item.product.images[0] ? (
+                  <Image
+                    src={item.product.images[0]}
+                    alt={item.product.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs">✨</div>
+                )}
               </div>
 
-              {/* Info */}
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 flex flex-col justify-between">
                 <Link
                   href={`/product/${item.product.slug}`}
-                  className="font-bold text-stone-800 text-sm sm:text-base hover:text-rose-600 transition block truncate"
+                  className="font-bold text-stone-800 hover:text-rose-600 text-sm sm:text-base line-clamp-1 transition"
                 >
                   {item.product.name}
                 </Link>
@@ -155,8 +232,8 @@ _الدفع عند الاستلام بعد المعاينة_`;
                 </div>
 
                 <div className="flex items-center justify-between mt-3">
-                  <span className="text-sm sm:text-base font-black text-rose-600">
-                    {item.product.price * item.quantity} جنيه
+                  <span className="text-sm sm:text-base font-black text-rose-600 font-sans">
+                    {item.product.price * item.quantity} ج.م
                   </span>
 
                   {/* Quantity Controller */}
@@ -199,7 +276,7 @@ _الدفع عند الاستلام بعد المعاينة_`;
                 onClick={() =>
                   removeFromCart(item.product.id, item.selectedSize, item.selectedColor)
                 }
-                className="p-2 text-stone-400 hover:text-rose-500 transition"
+                className="p-2 text-stone-400 hover:text-rose-500 transition self-start"
                 title="حذف القطعة"
               >
                 <Trash2 className="w-4 h-4" />
@@ -208,31 +285,89 @@ _الدفع عند الاستلام بعد المعاينة_`;
           ))}
         </div>
 
-        {/* Order Summary & WhatsApp Checkout */}
-        <div className="bg-white rounded-3xl p-6 border border-pink-100 shadow-sm space-y-5">
+        {/* Order Summary & WhatsApp Checkout (1 Col) */}
+        <div className="bg-white rounded-3xl p-6 border border-pink-100 shadow-sm space-y-5 h-fit">
           <h2 className="font-bold text-lg text-stone-900 border-b border-pink-100 pb-3">
             ملخص الطلب
           </h2>
 
-          <div className="space-y-2.5 text-xs sm:text-sm">
+          {/* Coupon Code Section */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-stone-700 flex items-center gap-1.5">
+              <Tag className="w-3.5 h-3.5 text-rose-500" />
+              <span>كود الخصم (كوبون التخفيض):</span>
+            </label>
+
+            {appliedCoupon ? (
+              <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 p-2.5 rounded-xl text-xs font-bold text-emerald-800 animate-fadeIn">
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-4 h-4 text-emerald-600" />
+                  <span>تم تطبيق كود: <strong className="font-mono">{appliedCoupon.code}</strong> (-{appliedCoupon.discountAmount} ج.م)</span>
+                </div>
+                <button
+                  onClick={handleRemoveCoupon}
+                  className="text-stone-400 hover:text-red-500 p-1"
+                  title="إلغاء الكود"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleApplyCoupon} className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="مثال: GIRL10"
+                  value={couponCodeInput}
+                  onChange={(e) => setCouponCodeInput(e.target.value)}
+                  className="w-full text-xs px-3 py-2 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 uppercase font-mono font-bold"
+                />
+                <button
+                  type="submit"
+                  disabled={couponLoading || !couponCodeInput.trim()}
+                  className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-bold px-3.5 py-2 rounded-xl transition shadow-sm whitespace-nowrap"
+                >
+                  {couponLoading ? '...' : 'تطبيق'}
+                </button>
+              </form>
+            )}
+
+            {couponError && (
+              <p className="text-[11px] text-red-600 font-semibold flex items-center gap-1 pt-0.5">
+                <AlertCircle className="w-3 h-3 flex-shrink-0" />
+                <span>{couponError}</span>
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2.5 text-xs sm:text-sm pt-2 border-t border-pink-100">
             <div className="flex justify-between text-stone-600">
               <span>إجمالي المنتجات:</span>
-              <span className="font-bold text-stone-800">{cartTotal} جنيه</span>
+              <span className="font-bold text-stone-800 font-sans">{cartTotal} ج.م</span>
             </div>
+
+            {appliedCoupon && (
+              <div className="flex justify-between text-emerald-600 font-bold">
+                <span>خصم الكوبون ({appliedCoupon.code}):</span>
+                <span>-{discountAmount} ج.م</span>
+              </div>
+            )}
+
             <div className="flex justify-between text-stone-600">
               <span>رسوم الشحن:</span>
               <span className="font-bold text-emerald-600">
-                {shippingFee === 0 ? 'مجاني 🎉' : `${shippingFee} جنيه`}
+                {shippingFee === 0 ? 'مجاني 🎉' : `${shippingFee} ج.م`}
               </span>
             </div>
+
             {shippingFee > 0 && (
               <p className="text-[11px] text-rose-500 bg-pink-50 p-2 rounded-xl">
-                أضيفي منتجات بقيمة {500 - cartTotal} جنيه للحصول على شحن مجاني!
+                أضيفي منتجات بقيمة {500 - discountedSubtotal} جنيه للحصول على شحن مجاني!
               </p>
             )}
+
             <div className="flex justify-between text-base font-black text-stone-900 pt-3 border-t border-pink-100">
-              <span>المبلغ الكلي:</span>
-              <span className="text-rose-600 text-lg">{grandTotal} جنيه</span>
+              <span>المبلغ الكلي المستحق:</span>
+              <span className="text-rose-600 text-lg font-sans">{grandTotal} ج.م</span>
             </div>
           </div>
 
@@ -251,43 +386,44 @@ _الدفع عند الاستلام بعد المعاينة_`;
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">رقم الموبايل / واتساب:</label>
+              <label className="block text-xs font-bold text-stone-700 mb-1">رقم الهاتف للتوصيل:</label>
               <input
                 type="tel"
                 required
                 placeholder="010XXXXXXXX"
                 value={customerPhone}
                 onChange={(e) => setCustomerPhone(e.target.value)}
-                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20"
+                className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20 font-mono"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">عنوان التوصيل بالتفصيل:</label>
-              <input
-                type="text"
+              <label className="block text-xs font-bold text-stone-700 mb-1">
+                عنوان التوصيل بالتفصيل:
+              </label>
+              <textarea
+                rows={2}
                 required
-                placeholder="المحافظة - المنطقة - اسم الشارع"
+                placeholder="المحافظة، المدينة، اسم الشارع، رقم العمارة والشقة..."
                 value={customerAddress}
                 onChange={(e) => setCustomerAddress(e.target.value)}
                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20"
-              />
+              ></textarea>
             </div>
 
             <button
               type="submit"
-              className="w-full py-4 px-4 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-white font-bold rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition text-sm"
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3.5 rounded-2xl transition shadow-md shadow-emerald-200 text-xs sm:text-sm flex items-center justify-center gap-2 active:scale-95 mt-4"
             >
               <MessageCircle className="w-5 h-5" />
-              <span>إتمام وتأكيد الطلب عبر واتساب</span>
+              <span>إرسال الطلب وتأكيده عبر واتساب 🛍️</span>
             </button>
 
-            <p className="text-[11px] text-center text-stone-500 flex items-center justify-center gap-1">
+            <div className="flex items-center justify-center gap-1.5 text-[11px] text-stone-500 pt-1">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-              <span>معاينة المنتجات متاحة ومجانية قبل دفع أي مليم</span>
-            </p>
+              <span>الدفع عند الاستلام بعد المعاينة التامة للمنتجات</span>
+            </div>
           </form>
-
         </div>
 
       </div>

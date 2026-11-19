@@ -49,11 +49,29 @@ model Order {
   customerAddress String   @db.Text
   items           Json     // Ordered items snapshot
   total           Float
+  discountAmount  Float    @default(0)
+  couponCode      String?
   status          String   @default("PENDING") // PENDING, PREPARING, SHIPPED, DELIVERED, CANCELLED
   trackingNumber  String?
   notes           String?  @db.Text
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+}
+
+model Coupon {
+  id             String    @id @default(cuid())
+  code           String    @unique // e.g. "GIRL10", "WELCOME20"
+  description    String?   // e.g. "خصم 10% بمناسبة الافتتاح"
+  discountType   String    @default("PERCENTAGE") // "PERCENTAGE" or "FIXED"
+  discountValue  Float     // e.g. 10 (for 10%) or 50 (for 50 EGP)
+  minOrderAmount Float     @default(0)
+  maxDiscount    Float?
+  usageLimit     Int?
+  usedCount      Int       @default(0)
+  isActive       Boolean   @default(true)
+  expiresAt      DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 }
 
 model AdminUser {
@@ -72,7 +90,20 @@ model SiteSettings {
   facebookUrl         String   @default("https://facebook.com")
   instagramUrl        String   @default("https://instagram.com")
   tiktokUrl           String   @default("https://tiktok.com")
-  announcementText    String   @default("تألقي مع تشكيلة Fashion Zone الجديدة ✨ شحن مجاني للطلبات فوق 500 جنيه | كود: GIRL10")
+  announcementText    String   @default("تألقي مع تشكيلة Fashion Zone الجديدة ✨ شحن مجاني للطلبات فوق 500 جنيه | كود خصم: GIRL10")
   announcementEnabled Boolean  @default(true)
+  
+  // Professional Ads & Promo Popups Control
+  promoPopupTitle     String?  @default("عرض خاص وحصري لكِ يا جميلة ✨")
+  promoPopupText      String?  @db.Text
+  promoPopupImage     String?  @db.Text
+  promoCouponCode     String?  @default("GIRL10")
+  promoPopupEnabled   Boolean  @default(true)
+  
+  // Hero & Homepage Promos
+  heroBannerTitle     String?  @default("تشكيلة الخريف والشتاء الفاخرة")
+  heroBannerSubtitle  String?  @default("تألقي بأحدث فساتين السهرة والعبايات الراقية بتصميمات ساحرة")
+  heroBannerBadge     String?  @default("خصومات حصرية لفترة محدودة 🔥")
+
   updatedAt           DateTime @updatedAt
 }
