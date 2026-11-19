@@ -65,12 +65,13 @@ export default function HomePage() {
     fetch('/api/products')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.products?.length > 0) {
-          const mapped = data.products.map((p: any) => ({
+        if (data.success) {
+          const mapped = (data.products || []).map((p: any) => ({
             id: p.id,
             slug: p.slug,
             name: p.name,
             nameEn: p.nameEn,
+            code: p.code,
             description: p.description,
             price: p.price,
             originalPrice: p.originalPrice,

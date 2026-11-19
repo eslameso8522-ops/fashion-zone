@@ -212,7 +212,7 @@ export default function Navbar() {
 
             {/* New Arrivals */}
             <Link
-              href="/search?filter=new"
+              href="/new-arrivals"
               className="text-sm font-bold text-stone-700 hover:text-rose-600 transition py-1 relative group"
             >
               وصل حديثاً 🎀
@@ -382,7 +382,7 @@ export default function Navbar() {
             </div>
 
             <Link
-              href="/search?filter=new"
+              href="/new-arrivals"
               onClick={() => setMobileMenuOpen(false)}
               className="block px-4 py-2 text-sm font-bold text-stone-800 hover:bg-pink-50 hover:text-rose-600 rounded-xl transition"
             >

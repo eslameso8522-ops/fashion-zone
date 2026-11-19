@@ -11,19 +11,21 @@ import ProductCard from '@/components/ProductCard';
 function SearchResultsContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
-  const [products, setProducts] = useState<Product[]>(PRODUCTS);
+  const filter = searchParams.get('filter');
+  const [products, setProducts] = useState<Product[]>([]);
   const [searchTerm, setSearchTerm] = useState(query);
 
   useEffect(() => {
     fetch('/api/products')
       .then((res) => res.json())
       .then((data) => {
-        if (data.success && data.products?.length > 0) {
-          const mapped = data.products.map((p: any) => ({
+        if (data.success) {
+          const mapped = (data.products || []).map((p: any) => ({
             id: p.id,
             slug: p.slug,
             name: p.name,
             nameEn: p.nameEn,
+            code: p.code,
             description: p.description,
             price: p.price,
             originalPrice: p.originalPrice,
@@ -35,8 +37,8 @@ function SearchResultsContent() {
             isFeatured: p.isFeatured,
             isNewArrival: p.isNewArrival,
             inStock: p.inStock,
-            rating: p.rating,
-            reviewsCount: p.reviewsCount,
+            rating: p.rating || 5.0,
+            reviewsCount: p.reviewsCount || 1,
           }));
           setProducts(mapped);
         }
@@ -45,35 +47,57 @@ function SearchResultsContent() {
   }, []);
 
   const filteredProducts = products.filter((p) => {
+    if (filter === 'new' && !p.isNewArrival) return false;
+    if (filter === 'sale' && !(p.originalPrice && p.originalPrice > p.price)) return false;
     if (!searchTerm.trim()) return true;
     const term = searchTerm.toLowerCase().trim();
     return (
       p.name.toLowerCase().includes(term) ||
       (p.nameEn && p.nameEn.toLowerCase().includes(term)) ||
+      (p.code && p.code.toLowerCase().includes(term)) ||
       p.description.toLowerCase().includes(term) ||
       p.category.toLowerCase().includes(term)
     );
   });
 
+  const pageTitle =
+    filter === 'new'
+      ? 'تشكيلة وصل حديثاً 🎀'
+      : filter === 'sale'
+      ? 'عروض وتخفيضات حصرية 🔥'
+      : searchTerm
+      ? `نتائج البحث عن: "${searchTerm}"`
+      : 'جميع المنتجات';
+
+  const pageSubtitle =
+    filter === 'new'
+      ? 'أحدث الموديلات والتصاميم الحصرية التي تم إضافتها لمتجر Fashion Zone حديثاً'
+      : filter === 'sale'
+      ? 'أقوى الخصومات والأسعار الخاصة المتاحة لفترة محدودة'
+      : 'تصفحي تشكيلاتنا الراقية المختارة بعناية';
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">
       {/* Search Header */}
-      <div className="max-w-2xl mx-auto text-center space-y-4">
-        <span className="text-xs font-bold text-rose-500 tracking-wider uppercase">البحث في المتجر</span>
+      <div className="max-w-2xl mx-auto text-center space-y-3">
+        <span className="text-xs font-bold text-rose-500 tracking-wider uppercase">
+          {filter === 'new' ? 'وصل حديثاً' : filter === 'sale' ? 'عروض خاصة' : 'البحث في المتجر'}
+        </span>
         <h1 className="text-2xl sm:text-3xl font-black text-stone-900 font-serif">
-          نتائج البحث عن: "{searchTerm}"
+          {pageTitle}
         </h1>
+        <p className="text-xs sm:text-sm text-stone-500">{pageSubtitle}</p>
 
         {/* Live Search Input */}
-        <div className="relative">
+        <div className="relative pt-2">
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="ابحثي عن فساتين، عبايات، حقائب، عطور..."
+            placeholder="ابحثي بكود الموديل (مثل: 3606) أو اسم الموديل أو القسم..."
             className="w-full text-sm px-5 py-3.5 pr-12 rounded-full border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white shadow-sm"
           />
-          <Search className="w-5 h-5 text-rose-500 absolute right-4 top-1/2 -translate-y-1/2" />
+          <Search className="w-5 h-5 text-rose-500 absolute right-4 top-1/2 translate-y-[-20%]" />
         </div>
       </div>
 
@@ -91,20 +115,28 @@ function SearchResultsContent() {
         </div>
       ) : (
         <div className="text-center py-16 bg-white rounded-3xl border border-pink-100 max-w-lg mx-auto p-8 space-y-4">
-          <div className="w-14 h-14 rounded-full bg-pink-50 text-rose-400 mx-auto flex items-center justify-center">
-            <Search className="w-6 h-6" />
+          <div className="w-14 h-14 rounded-full bg-pink-50 text-rose-400 mx-auto flex items-center justify-center text-xl">
+            {filter === 'new' ? '🎀' : '🔍'}
           </div>
-          <h3 className="font-bold text-stone-800 text-base">لم نتمكن من العثور على نتائج</h3>
+          <h3 className="font-bold text-stone-800 text-base">
+            {filter === 'new'
+              ? 'لا توجد منتجات مضافة في قسم وصل حديثاً حالياً'
+              : 'لم نتمكن من العثور على نتائج'}
+          </h3>
           <p className="text-xs text-stone-500">
-            جربي البحث بكلمات أخرى مثل (فستان، عباية، حقيبة، عطر) أو تصفحي أقسام المتجر الرئيسية.
+            {filter === 'new'
+              ? 'يمكنك إضافة أي منتج لقسم وصل حديثاً بنقرة زر من لوحة التحكم.'
+              : 'جربي البحث بكلمات أخرى أو تصفحي أقسام المتجر الرئيسية.'}
           </p>
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-rose-500 text-white rounded-full font-bold text-xs shadow-soft-pink"
-          >
-            <span>العودة للرئيسية</span>
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
+          <div className="pt-2">
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-sm"
+            >
+              <span>العودة للرئيسية</span>
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       )}
     </div>

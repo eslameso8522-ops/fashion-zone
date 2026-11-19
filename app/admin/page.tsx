@@ -68,6 +68,8 @@ interface ProductItem {
   sizes?: string[];
   colors?: { name: string; hex: string }[];
   inStock: boolean;
+  isNewArrival?: boolean;
+  isFeatured?: boolean;
   createdAt: string;
 }
 
@@ -972,6 +974,34 @@ export default function AdminPage() {
       }
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  // Toggle isNewArrival (وصل حديثاً)
+  const handleToggleNewArrival = async (product: ProductItem) => {
+    const nextVal = !product.isNewArrival;
+    try {
+      const res = await fetch(`/api/products/${product.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isNewArrival: nextVal }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === product.id ? { ...p, isNewArrival: nextVal } : p))
+        );
+        setSuccessMessage(
+          nextVal
+            ? `تمت إضافة "${product.name}" إلى قسم وصل حديثاً 🎀 بنجاح!`
+            : `تمت إزالة "${product.name}" من قسم وصل حديثاً بنجاح.`
+        );
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        alert('تعذر تحديث حالة وصل حديثاً: ' + data.error);
+      }
+    } catch (e: any) {
+      alert('خطأ في الاتصال: ' + e.message);
     }
   };
 
@@ -1913,6 +1943,7 @@ export default function AdminPage() {
                       <th className="pb-3 font-semibold">القسم</th>
                       <th className="pb-3 font-semibold">السعر</th>
                       <th className="pb-3 font-semibold">حالة التوفر</th>
+                      <th className="pb-3 font-semibold">وصل حديثاً 🎀</th>
                       <th className="pb-3 font-semibold text-center">إجراءات</th>
                     </tr>
                   </thead>
@@ -1951,6 +1982,19 @@ export default function AdminPage() {
                             }`}
                           >
                             {product.inStock ? 'متوفر بالمخزون ✓' : 'نفذت الكمية ✕'}
+                          </button>
+                        </td>
+                        <td className="py-3">
+                          <button
+                            onClick={() => handleToggleNewArrival(product)}
+                            className={`px-3 py-1 rounded-full text-[10px] font-bold transition flex items-center gap-1 ${
+                              product.isNewArrival
+                                ? 'bg-rose-100 text-rose-700 hover:bg-rose-200 border border-pink-300'
+                                : 'bg-stone-100 text-stone-500 hover:bg-pink-50 hover:text-rose-600'
+                            }`}
+                            title={product.isNewArrival ? 'إزالة من وصل حديثاً' : 'إضافة إلى وصل حديثاً'}
+                          >
+                            <span>{product.isNewArrival ? 'معروض في وصل حديثاً 🎀 ✓' : '+ إضافة لوصل حديثاً'}</span>
                           </button>
                         </td>
                         <td className="py-3 text-center">
