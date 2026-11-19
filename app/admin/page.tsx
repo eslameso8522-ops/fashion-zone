@@ -38,6 +38,8 @@ import {
   Gift,
   Copy,
   Star,
+  Edit2,
+  Smartphone,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -214,6 +216,17 @@ export default function AdminPage() {
   const [newCatImage, setNewCatImage] = useState('');
   const [newCatShowInNavbar, setNewCatShowInNavbar] = useState(true);
   const [uploadingCatImage, setUploadingCatImage] = useState(false);
+
+  // Category Edit states
+  const [editingCategory, setEditingCategory] = useState<CategoryItem | null>(null);
+  const [editCatName, setEditCatName] = useState('');
+  const [editCatImage, setEditCatImage] = useState('');
+  const [editCatShowInNavbar, setEditCatShowInNavbar] = useState(true);
+  const [uploadingEditCatImage, setUploadingEditCatImage] = useState(false);
+
+  // WhatsApp Smart Importer states
+  const [showWhatsAppImporter, setShowWhatsAppImporter] = useState(false);
+  const [whatsAppText, setWhatsAppText] = useState('');
 
   // Coupon Form states
   const [showAddCouponModal, setShowAddCouponModal] = useState(false);
@@ -553,6 +566,197 @@ export default function AdminPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Start Editing Category
+  const handleStartEditCategory = (cat: CategoryItem) => {
+    setEditingCategory(cat);
+    setEditCatName(cat.name);
+    setEditCatImage(cat.image);
+    setEditCatShowInNavbar(cat.showInNavbar);
+  };
+
+  // Upload Edit Category Image to Cloudinary
+  const handleEditCategoryImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingEditCatImage(true);
+    try {
+      const file = files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data.success && data.url) {
+        setEditCatImage(data.url);
+      } else {
+        alert('تعذر رفع صورة القسم: ' + (data.error || 'خطأ'));
+      }
+    } catch (err: any) {
+      alert('خطأ: ' + err.message);
+    } finally {
+      setUploadingEditCatImage(false);
+      e.target.value = '';
+    }
+  };
+
+  // Update Category Submit (PATCH)
+  const handleUpdateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCategory) return;
+    if (!editCatName.trim()) {
+      alert('يرجى كتابة اسم القسم');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/categories', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingCategory.id,
+          name: editCatName.trim(),
+          image: editCatImage,
+          showInNavbar: editCatShowInNavbar,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setSuccessMessage(`تم تعديل قسم "${editCatName}" بنجاح! ✨`);
+        confetti({ particleCount: 60, spread: 60 });
+        setEditingCategory(null);
+        fetchData();
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        alert('خطأ أثناء التعديل: ' + data.error);
+      }
+    } catch (err: any) {
+      alert('خطأ في الاتصال: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Smart WhatsApp Post Parser
+  const handleParseWhatsAppPost = () => {
+    if (!whatsAppText.trim()) {
+      alert('يرجى لصق نص المنشور من واتساب أولاً!');
+      return;
+    }
+
+    const text = whatsAppText;
+    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+
+    // 1. Name: usually the first non-empty line
+    let extractedName = lines[0] || 'فستان سهرة جديد';
+    extractedName = extractedName.replace(/^[•\-\*✨🔥👗🎀]+\s*/, '').trim();
+
+    // 2. Price extraction
+    let extractedPrice = '';
+    let extractedOriginalPrice = '';
+    const priceMatch = text.match(/(\d+[\d,.]*)\s*(?:جنيه|ج\.م|ج|egp)?\s*(?:بدل|بدلاً من|بدلا من|قبل الخصم)\s*(\d+[\d,.]*)/i);
+    if (priceMatch) {
+      extractedPrice = priceMatch[1].replace(/,/g, '');
+      extractedOriginalPrice = priceMatch[2].replace(/,/g, '');
+    } else {
+      const singlePriceMatch = text.match(/(?:السعر|سعر|price)[:\s]*(\d+[\d,.]*)/i) || text.match(/(\d{2,5})\s*(?:جنيه|ج\.م|ج)/);
+      if (singlePriceMatch) {
+        extractedPrice = singlePriceMatch[1].replace(/,/g, '');
+      }
+    }
+
+    // 3. Sizes extraction
+    const detectedSizes: string[] = [];
+    const sizesKeywords = ['S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', 'مقاس موحد', '52', '54', '56', '58'];
+    sizesKeywords.forEach((sz) => {
+      const regex = new RegExp(`\\b${sz}\\b`, 'i');
+      if (regex.test(text) || (sz === 'مقاس موحد' && text.includes('مقاس موحد')) || (sz === 'XXL' && (text.includes('XXL') || text.includes('2XL')))) {
+        if (!detectedSizes.includes(sz === '2XL' ? 'XXL' : sz)) {
+          detectedSizes.push(sz === '2XL' ? 'XXL' : sz);
+        }
+      }
+    });
+
+    // 4. Colors extraction
+    const colorDictionary: { [key: string]: string } = {
+      'أسود': '#18181b',
+      'اسود': '#18181b',
+      'أبيض': '#ffffff',
+      'ابيض': '#ffffff',
+      'وردي': '#f472b6',
+      'روز': '#fb7185',
+      'كشمير': '#e0a899',
+      'نبيتي': '#881337',
+      'أحمر': '#e11d48',
+      'احمر': '#e11d48',
+      'زيتي': '#3f6212',
+      'أخضر': '#15803d',
+      'اخضر': '#15803d',
+      'كحلي': '#1e3a8a',
+      'أزرق': '#2563eb',
+      'ازرق': '#2563eb',
+      'بيج': '#f5f5dc',
+      'سيمون': '#fca5a5',
+      'رمادي': '#71717a',
+      'موف': '#9333ea',
+      'بستاج': '#a7f3d0',
+      'لافندر': '#c084fc',
+    };
+    const detectedColors: { name: string; hex: string }[] = [];
+    Object.keys(colorDictionary).forEach((col) => {
+      if (text.includes(col)) {
+        if (!detectedColors.some((c) => c.name === col)) {
+          detectedColors.push({ name: col, hex: colorDictionary[col] });
+        }
+      }
+    });
+
+    // 5. Category matching
+    let matchedCatId = categoryId;
+    if (categories.length > 0) {
+      if (text.includes('فستان') || text.includes('دريس') || text.includes('سواريه')) {
+        const found = categories.find((c) => c.name.includes('فساتين'));
+        if (found) matchedCatId = found.id;
+      } else if (text.includes('عبايه') || text.includes('عباية') || text.includes('كيمونو')) {
+        const found = categories.find((c) => c.name.includes('عبايات'));
+        if (found) matchedCatId = found.id;
+      } else if (text.includes('شنطة') || text.includes('حقيبة') || text.includes('شنط')) {
+        const found = categories.find((c) => c.name.includes('حقائب'));
+        if (found) matchedCatId = found.id;
+      } else if (text.includes('سلسلة') || text.includes('خاتم') || text.includes('مجوهرات') || text.includes('اكسسوار')) {
+        const found = categories.find((c) => c.name.includes('مجوهرات'));
+        if (found) matchedCatId = found.id;
+      } else if (text.includes('عطر') || text.includes('برفيوم') || text.includes('ميك اب') || text.includes('تجميل')) {
+        const found = categories.find((c) => c.name.includes('عطور'));
+        if (found) matchedCatId = found.id;
+      }
+    }
+
+    // Apply to product form
+    setName(extractedName);
+    if (extractedPrice) setPrice(extractedPrice);
+    if (extractedOriginalPrice) setOriginalPrice(extractedOriginalPrice);
+    if (detectedSizes.length > 0) setSelectedSizes(detectedSizes);
+    if (detectedColors.length > 0) setSelectedColors(detectedColors);
+    if (matchedCatId) setCategoryId(matchedCatId);
+    setDescription(text);
+
+    // Auto generate 3 realistic reviews
+    generateRealisticReviews();
+
+    confetti({ particleCount: 70, spread: 60 });
+    setSuccessMessage('تم استخراج وقراءة بيانات المنتج من واتساب وتعبئتها في النموذج بنجاح! 🎉');
+    setShowWhatsAppImporter(false);
+    setShowAddProductModal(true);
+    setTimeout(() => setSuccessMessage(''), 5000);
   };
 
   // Toggle Category Navbar
@@ -1203,14 +1407,98 @@ export default function AdminPage() {
                 <h2 className="text-lg font-bold text-stone-900">إدارة المنتجات والمخزون</h2>
                 <p className="text-xs text-stone-500">إضافة وتعديل وحذف المنتجات ورفع الصور تلقائياً لـ Cloudinary</p>
               </div>
-              <button
-                onClick={() => setShowAddProductModal(!showAddProductModal)}
-                className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5"
-              >
-                <Plus className="w-4 h-4" />
-                <span>{showAddProductModal ? 'إغلاق نافذة الإضافة' : 'إضافة منتج جديد'}</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowWhatsAppImporter(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-2"
+                >
+                  <Smartphone className="w-4 h-4" />
+                  <span>استيراد سريع من واتساب 📲</span>
+                </button>
+                <button
+                  onClick={() => setShowAddProductModal(!showAddProductModal)}
+                  className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{showAddProductModal ? 'إغلاق نافذة الإضافة' : 'إضافة منتج جديد'}</span>
+                </button>
+              </div>
             </div>
+
+            {/* WhatsApp Smart Importer Modal */}
+            {showWhatsAppImporter && (
+              <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-2xl w-full border border-pink-200 shadow-2xl space-y-5 animate-scaleUp">
+                  <div className="flex items-center justify-between pb-3 border-b border-pink-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold">
+                        <Smartphone className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-stone-900">مستورد منتجات واتساب الذكي 📲✨</h3>
+                        <p className="text-xs text-stone-500">انسخي تفاصيل المنتج من جروب الواتساب والصقيها هنا، وسيتم استخراج كل شيء بذكاء</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowWhatsAppImporter(false)}
+                      className="p-2 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-100"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="bg-amber-50 rounded-2xl p-4 border border-amber-200 text-xs text-amber-900 space-y-1">
+                    <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                      <Sparkles className="w-4 h-4 text-amber-600" />
+                      <span>كيف يعمل المستورد الذكي؟</span>
+                    </div>
+                    <p className="text-[11px] leading-relaxed text-amber-800/90">
+                      1. افتحي جروب الواتساب وانسخي رسالة المنتج (اسم الفستان/العباية، السعر، المقاسات، الألوان، خامة القماش).<br />
+                      2. الصقي النص هنا واضغطي على الزر السحري بالأسفل.<br />
+                      3. يقوم النظام آلياً باستخراج الاسم، السعر الأصلي وسعر الخصم، وتحديد المقاسات والألوان وتصنيف القسم، وتوليد 3 ريفيوهات عملاء واقعية 5 نجوم تلقائياً!
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                      نص المنشور المنسوخ من جروب الواتساب:
+                    </label>
+                    <textarea
+                      rows={6}
+                      value={whatsAppText}
+                      onChange={(e) => setWhatsAppText(e.target.value)}
+                      placeholder={`مثال من الواتساب:
+فستان سهرة كريب حرير مطرز سواريه راقي ✨
+السعر: 850 جنيه بدل 1200 جنيه لفترة محدودة 🔥
+المقاسات المتاحة: M, L, XL, XXL
+الألوان المتوفرة: وردي، أسود، كشمير، كحلي
+خامة مستوردة فاخرة مع تقفيل سوبر لوكس وتوصيل مجاني`}
+                      className="w-full text-xs p-3.5 rounded-2xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-emerald-400 bg-pink-50/20 font-sans leading-relaxed"
+                    />
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleParseWhatsAppPost}
+                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-3 px-5 rounded-2xl shadow-md transition flex items-center justify-center gap-2"
+                    >
+                      <Sparkles className="w-4 h-4" />
+                      <span>🪄 استخراج البيانات وتعبئة المنتج تلقائياً</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowWhatsAppImporter(false)}
+                      className="px-5 py-3 rounded-2xl border border-stone-200 text-xs font-bold text-stone-600 hover:bg-stone-50"
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Product Add Form Modal */}
             {showAddProductModal && (
@@ -1586,78 +1874,174 @@ export default function AdminPage() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Add Category Form (Left / Col 1) */}
+              {/* Add or Edit Category Form (Left / Col 1) */}
               <div className="bg-white rounded-3xl p-6 border border-pink-100 shadow-sm space-y-4 h-fit">
-                <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-rose-500" />
-                  <span>إضافة قسم جديد بصورته</span>
-                </h3>
+                {editingCategory ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-pink-100">
+                      <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
+                        <Edit2 className="w-4 h-4 text-rose-500" />
+                        <span>تعديل قسم: {editingCategory.name}</span>
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setEditingCategory(null)}
+                        className="text-stone-400 hover:text-stone-700 p-1 rounded-lg"
+                        title="إلغاء التعديل"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
 
-                <form onSubmit={handleCreateCategory} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1.5">اسم القسم *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="مثال: فساتين خطوبة، طرح وشيلان..."
-                      value={newCatName}
-                      onChange={(e) => setNewCatName(e.target.value)}
-                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20"
-                    />
-                  </div>
+                    <form onSubmit={handleUpdateCategory} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1.5">اسم القسم الجديد *</label>
+                        <input
+                          type="text"
+                          required
+                          value={editCatName}
+                          onChange={(e) => setEditCatName(e.target.value)}
+                          placeholder="اسم القسم..."
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1.5">صورة القسم الغلاف (تظهر بالناف بار) *</label>
-                    {newCatImage ? (
-                      <div className="relative w-full h-32 rounded-xl overflow-hidden border border-pink-200 mb-2">
-                        <Image src={newCatImage} alt="Category preview" fill className="object-cover" />
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1.5">صورة القسم الغلاف (تظهر بالناف بار)</label>
+                        {editCatImage ? (
+                          <div className="relative w-full h-32 rounded-xl overflow-hidden border border-pink-200 mb-2">
+                            <Image src={editCatImage} alt="Category preview" fill className="object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setEditCatImage('')}
+                              className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full shadow-sm"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="w-full h-28 rounded-xl border-2 border-dashed border-pink-300 hover:border-rose-500 bg-pink-50/40 flex flex-col items-center justify-center cursor-pointer transition">
+                            <Upload className="w-5 h-5 text-rose-500 mb-1" />
+                            <span className="text-xs font-bold text-rose-600">
+                              {uploadingEditCatImage ? 'جاري الرفع لـ Cloudinary...' : 'رفع صورة جديدة للقسم'}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleEditCategoryImageUpload}
+                              disabled={uploadingEditCatImage}
+                              className="hidden"
+                            />
+                          </label>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2 bg-pink-50/50 p-3 rounded-xl border border-pink-100">
+                        <input
+                          type="checkbox"
+                          id="editCatShowInNavbar"
+                          checked={editCatShowInNavbar}
+                          onChange={(e) => setEditCatShowInNavbar(e.target.checked)}
+                          className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-400"
+                        />
+                        <label htmlFor="editCatShowInNavbar" className="text-xs font-bold text-stone-700 cursor-pointer">
+                          إظهار في القائمة المنسدلة بالناف بار
+                        </label>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <button
+                          type="submit"
+                          disabled={loading || uploadingEditCatImage}
+                          className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-bold py-2.5 rounded-xl shadow-sm transition flex items-center justify-center gap-1.5"
+                        >
+                          <Save className="w-4 h-4" />
+                          <span>حفظ التعديلات</span>
+                        </button>
                         <button
                           type="button"
-                          onClick={() => setNewCatImage('')}
-                          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                          onClick={() => setEditingCategory(null)}
+                          className="px-4 py-2.5 rounded-xl border border-stone-200 text-xs font-bold text-stone-600 hover:bg-stone-50"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          إلغاء
                         </button>
                       </div>
-                    ) : (
-                      <label className="w-full h-28 rounded-xl border-2 border-dashed border-pink-300 hover:border-rose-500 bg-pink-50/40 flex flex-col items-center justify-center cursor-pointer transition">
-                        <Upload className="w-5 h-5 text-rose-500 mb-1" />
-                        <span className="text-xs font-bold text-rose-600">
-                          {uploadingCatImage ? 'جاري الرفع لـ Cloudinary...' : 'رفع صورة القسم'}
-                        </span>
+                    </form>
+                  </div>
+                ) : (
+                  <>
+                    <h3 className="font-bold text-sm text-stone-900 flex items-center gap-2">
+                      <Plus className="w-4 h-4 text-rose-500" />
+                      <span>إضافة قسم جديد بصورته</span>
+                    </h3>
+
+                    <form onSubmit={handleCreateCategory} className="space-y-4">
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1.5">اسم القسم *</label>
                         <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleCategoryImageUpload}
-                          disabled={uploadingCatImage}
-                          className="hidden"
+                          type="text"
+                          required
+                          placeholder="مثال: فساتين خطوبة، طرح وشيلان..."
+                          value={newCatName}
+                          onChange={(e) => setNewCatName(e.target.value)}
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20"
                         />
-                      </label>
-                    )}
-                  </div>
+                      </div>
 
-                  <div className="flex items-center gap-2 bg-pink-50/50 p-3 rounded-xl border border-pink-100">
-                    <input
-                      type="checkbox"
-                      id="showInNavbar"
-                      checked={newCatShowInNavbar}
-                      onChange={(e) => setNewCatShowInNavbar(e.target.checked)}
-                      className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-400"
-                    />
-                    <label htmlFor="showInNavbar" className="text-xs font-bold text-stone-700 cursor-pointer">
-                      إظهار في القائمة المنسدلة بالناف بار
-                    </label>
-                  </div>
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1.5">صورة القسم الغلاف (تظهر بالناف بار) *</label>
+                        {newCatImage ? (
+                          <div className="relative w-full h-32 rounded-xl overflow-hidden border border-pink-200 mb-2">
+                            <Image src={newCatImage} alt="Category preview" fill className="object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => setNewCatImage('')}
+                              className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className="w-full h-28 rounded-xl border-2 border-dashed border-pink-300 hover:border-rose-500 bg-pink-50/40 flex flex-col items-center justify-center cursor-pointer transition">
+                            <Upload className="w-5 h-5 text-rose-500 mb-1" />
+                            <span className="text-xs font-bold text-rose-600">
+                              {uploadingCatImage ? 'جاري الرفع لـ Cloudinary...' : 'رفع صورة القسم'}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={handleCategoryImageUpload}
+                              disabled={uploadingCatImage}
+                              className="hidden"
+                            />
+                          </label>
+                        )}
+                      </div>
 
-                  <button
-                    type="submit"
-                    disabled={loading || uploadingCatImage}
-                    className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-bold py-2.5 rounded-xl shadow-sm transition flex items-center justify-center gap-1.5"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>إنشاء القسم وحفظه</span>
-                  </button>
-                </form>
+                      <div className="flex items-center gap-2 bg-pink-50/50 p-3 rounded-xl border border-pink-100">
+                        <input
+                          type="checkbox"
+                          id="showInNavbar"
+                          checked={newCatShowInNavbar}
+                          onChange={(e) => setNewCatShowInNavbar(e.target.checked)}
+                          className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-400"
+                        />
+                        <label htmlFor="showInNavbar" className="text-xs font-bold text-stone-700 cursor-pointer">
+                          إظهار في القائمة المنسدلة بالناف بار
+                        </label>
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={loading || uploadingCatImage}
+                        className="w-full bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-bold py-2.5 rounded-xl shadow-sm transition flex items-center justify-center gap-1.5"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span>إنشاء القسم وحفظه</span>
+                      </button>
+                    </form>
+                  </>
+                )}
               </div>
 
               {/* Categories List (Right / Col 2-3) */}
@@ -1693,6 +2077,17 @@ export default function AdminPage() {
                         </div>
 
                         <div className="flex items-center gap-2">
+                          {/* Edit Category Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleStartEditCategory(cat)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition border bg-pink-50/70 text-rose-700 border-pink-200 hover:bg-rose-100"
+                            title="تعديل اسم أو صورة القسم"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-rose-600" />
+                            <span>تعديل</span>
+                          </button>
+
                           {/* Toggle Navbar Visibility */}
                           <button
                             onClick={() => handleToggleCategoryNavbar(cat)}
