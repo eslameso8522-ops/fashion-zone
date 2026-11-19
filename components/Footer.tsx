@@ -125,7 +125,7 @@ export default function Footer() {
               </span>
             </div>
             <p className="text-xs leading-relaxed text-stone-600">
-              وجهتكِ الأولى للأناقة والجمال. نوفر أرقى تشكيلات الفساتين، العبايات، الحقائب، والمجوهرات المختارة بعناية لتناسب ذوق كل بنوتة عصرية.
+              وجهتكِ الأولى لأرقى ملابس الشتاء، الهوم وير والبيجامات القطيفة الهايدي، ترينجات وسوت خروج ميلتون، ملابس الأطفال والشبابي، والجواكت المستوردة بأسعار حنينة وخامات أصلية.
             </p>
             
             {/* Dynamic Social Media Links */}
@@ -193,19 +193,19 @@ export default function Footer() {
             <h4 className="font-bold text-stone-800 text-sm mb-3">أقسام المتجر</h4>
             <ul className="space-y-2 text-xs">
               <li>
-                <Link href="/category/dresses" className="hover:text-rose-600 transition">فساتين سهرة ومناسبات</Link>
+                <Link href="/category/homewear-winter-pyjamas" className="hover:text-rose-600 transition">هوم وير وبيجامات شتوي</Link>
               </li>
               <li>
-                <Link href="/category/abayas" className="hover:text-rose-600 transition">عبايات وكيمونو راقي</Link>
+                <Link href="/category/winter-tracksuits-and-suits" className="hover:text-rose-600 transition">ترينجات وسوت خروج ميلتون</Link>
               </li>
               <li>
-                <Link href="/category/bags" className="hover:text-rose-600 transition">حقائب يد نسائية</Link>
+                <Link href="/category/kids-and-teens-winter" className="hover:text-rose-600 transition">ملابس أطفال وشبابي</Link>
               </li>
               <li>
-                <Link href="/category/jewelry" className="hover:text-rose-600 transition">مجوهرات وأقراط زيركون</Link>
+                <Link href="/category/waterproof-winter-jackets" className="hover:text-rose-600 transition">جواكت ومعاطف ووتر بروف</Link>
               </li>
               <li>
-                <Link href="/category/perfumes" className="hover:text-rose-600 transition">عطور ومستحضرات تجميل</Link>
+                <Link href="/category/plus-size-winter-fashion" className="hover:text-rose-600 transition">مقاسات خاصة وبيج سايز</Link>
               </li>
             </ul>
           </div>

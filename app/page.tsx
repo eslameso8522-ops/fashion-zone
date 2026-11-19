@@ -11,7 +11,7 @@ import ProductCard from '@/components/ProductCard';
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [categories, setCategories] = useState(CATEGORIES);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'dresses' | 'featured' | 'sale'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 'homewear' | 'featured' | 'sale'>('all');
   const [heroSettings, setHeroSettings] = useState({
     heroTitle: 'كوني الأجمل في كل إطلالة مع Fashion Zone',
     heroSubtitle: 'اكتشفي تشكيلة راقية ومختارة بعناية من فساتين السهرة الناعمة، العبايات المطرزة، الحقائب والمجوهرات التي تزيدكِ تألقاً وسحراً.',
@@ -102,7 +102,9 @@ export default function HomePage() {
   }, []);
 
   const filteredProducts = products.filter((product) => {
-    if (selectedFilter === 'dresses') return product.categorySlug === 'dresses';
+    if (selectedFilter === 'homewear') {
+      return product.categorySlug === 'homewear-winter-pyjamas' || product.category?.includes('هوم وير') || product.category?.includes('بيجامات');
+    }
     if (selectedFilter === 'featured') return product.isFeatured;
     if (selectedFilter === 'sale') return product.originalPrice && product.originalPrice > product.price;
     return true;
@@ -182,10 +184,10 @@ export default function HomePage() {
                 </a>
 
                 <Link
-                  href="/category/dresses"
+                  href="#catalog"
                   className="w-full sm:w-auto px-7 py-4 rounded-full bg-white hover:bg-pink-50 text-stone-800 border border-pink-200 font-bold text-base transition shadow-sm flex items-center justify-center gap-2"
                 >
-                  <span>أحدث الفساتين</span>
+                  <span>أحدث كوليكشن الشتاء ❄️</span>
                 </Link>
               </div>
 
@@ -262,7 +264,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 sm:gap-6">
-          {CATEGORIES.map((cat) => (
+          {categories.map((cat: any) => (
             <Link
               key={cat.id}
               href={`/category/${cat.slug}`}
@@ -283,7 +285,7 @@ export default function HomePage() {
                 {cat.name}
               </h3>
               <span className="text-[11px] text-stone-400 mt-0.5">
-                {cat.itemCount} قطعة أنيقة
+                {cat.itemCount ? `${cat.itemCount} قطعة متوفرة` : 'قسم شتوي مميز'}
               </span>
             </Link>
           ))}
@@ -315,14 +317,14 @@ export default function HomePage() {
               جميع المنتجات
             </button>
             <button
-              onClick={() => setSelectedFilter('dresses')}
+              onClick={() => setSelectedFilter('homewear')}
               className={`px-4 py-1.5 rounded-xl text-xs font-bold transition ${
-                selectedFilter === 'dresses'
+                selectedFilter === 'homewear'
                   ? 'bg-rose-500 text-white shadow-sm'
                   : 'text-stone-700 hover:text-rose-600'
               }`}
             >
-              الفساتين
+              هوم وير وبيجامات
             </button>
             <button
               onClick={() => setSelectedFilter('featured')}

@@ -2,9 +2,9 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Fashion Zone | متجر الأزياء النسائية والجمال',
+    name: 'Fashion Zone 👕👖👗 | متجر ملابس الشتاء والهوم وير والأطفال',
     short_name: 'Fashion Zone',
-    description: 'أرقى فساتين السهرة والعبايات والحقائب والمجوهرات النسائية',
+    description: 'كوليكشن شتاء 2026/2027: بيجامات قطيفة وهايدي، ترينجات ميلتون خروج، ملابس أطفال وشبابي، وجواكت ووتر بروف',
     start_url: '/',
     display: 'standalone',
     background_color: '#fdfbf9',

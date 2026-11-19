@@ -27,9 +27,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
   ];
 
-  // Category pages
-  const categoryPages: MetadataRoute.Sitemap = CATEGORIES.map((cat) => ({
-    url: `${baseUrl}/category/${cat.slug}`,
+  // Category pages from DB
+  let categorySlugs: string[] = CATEGORIES.map((c) => c.slug);
+  try {
+    const dbCats = await prisma.category.findMany({
+      select: { slug: true, updatedAt: true },
+    });
+    if (dbCats.length > 0) {
+      categorySlugs = dbCats.map((c) => c.slug);
+    }
+  } catch (e) {
+    console.error('Error loading category slugs for sitemap:', e);
+  }
+
+  const categoryPages: MetadataRoute.Sitemap = categorySlugs.map((slug) => ({
+    url: `${baseUrl}/category/${slug}`,
     lastModified: new Date(),
     changeFrequency: 'weekly',
     priority: 0.8,
