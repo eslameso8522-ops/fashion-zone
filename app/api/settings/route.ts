@@ -34,6 +34,13 @@ export async function GET() {
           heroCouponDiscount: 'خصم 10%',
           heroCtaText: 'تسوقي الآن / Shop Now',
           heroCtaLink: '#catalog',
+          heroBannerTitle: 'خصم يصل إلى 35% على تشكيلة فساتين السهرة الفاخرة!',
+          heroBannerSubtitle: 'استمتعي بأفضل الأسعار مع خامات مستوردة أصلية 100% وشحن مجاني حتى باب منزلك مع إمكانية المعاينة.',
+          heroBannerBadge: 'عرض محدود لفترة وجيزة',
+          heroBannerCtaText: 'تصفحي العروض الآن',
+          heroBannerCtaLink: '#catalog',
+          heroBannerImage: '',
+          heroBannerEnabled: true,
         },
       });
     }
@@ -65,6 +72,13 @@ export async function GET() {
         heroCouponDiscount: 'خصم 10%',
         heroCtaText: 'تسوقي الآن / Shop Now',
         heroCtaLink: '#catalog',
+        heroBannerTitle: 'خصم يصل إلى 35% على تشكيلة فساتين السهرة الفاخرة!',
+        heroBannerSubtitle: 'استمتعي بأفضل الأسعار مع خامات مستوردة أصلية 100% وشحن مجاني حتى باب منزلك مع إمكانية المعاينة.',
+        heroBannerBadge: 'عرض محدود لفترة وجيزة',
+        heroBannerCtaText: 'تصفحي العروض الآن',
+        heroBannerCtaLink: '#catalog',
+        heroBannerImage: '',
+        heroBannerEnabled: true,
       },
     });
   }
@@ -89,6 +103,10 @@ export async function POST(request: Request) {
       heroBannerTitle,
       heroBannerSubtitle,
       heroBannerBadge,
+      heroBannerCtaText,
+      heroBannerCtaLink,
+      heroBannerImage,
+      heroBannerEnabled,
       heroTitle,
       heroSubtitle,
       heroImage,
@@ -117,6 +135,10 @@ export async function POST(request: Request) {
     if (heroBannerTitle !== undefined) dataPayload.heroBannerTitle = heroBannerTitle;
     if (heroBannerSubtitle !== undefined) dataPayload.heroBannerSubtitle = heroBannerSubtitle;
     if (heroBannerBadge !== undefined) dataPayload.heroBannerBadge = heroBannerBadge;
+    if (heroBannerCtaText !== undefined) dataPayload.heroBannerCtaText = heroBannerCtaText;
+    if (heroBannerCtaLink !== undefined) dataPayload.heroBannerCtaLink = heroBannerCtaLink;
+    if (heroBannerImage !== undefined) dataPayload.heroBannerImage = heroBannerImage;
+    if (heroBannerEnabled !== undefined) dataPayload.heroBannerEnabled = Boolean(heroBannerEnabled);
 
     if (heroTitle !== undefined) dataPayload.heroTitle = heroTitle;
     if (heroSubtitle !== undefined) dataPayload.heroSubtitle = heroSubtitle;

@@ -102,9 +102,13 @@ model SiteSettings {
   promoPopupEnabled   Boolean  @default(true)
   
   // Hero & Homepage Promos
-  heroBannerTitle     String?  @default("تشكيلة الخريف والشتاء الفاخرة")
-  heroBannerSubtitle  String?  @default("تألقي بأحدث فساتين السهرة والعبايات الراقية بتصميمات ساحرة")
-  heroBannerBadge     String?  @default("خصومات حصرية لفترة محدودة 🔥")
+  heroBannerTitle     String?  @default("خصم يصل إلى 35% على تشكيلة فساتين السهرة الفاخرة!")
+  heroBannerSubtitle  String?  @default("استمتعي بأفضل الأسعار مع خامات مستوردة أصلية 100% وشحن مجاني حتى باب منزلك مع إمكانية المعاينة.")
+  heroBannerBadge     String?  @default("عرض محدود لفترة وجيزة")
+  heroBannerCtaText   String?  @default("تصفحي العروض الآن")
+  heroBannerCtaLink   String?  @default("#catalog")
+  heroBannerImage     String?  @db.Text
+  heroBannerEnabled   Boolean  @default(true)
 
   // Hero Section Dynamic Controls
   heroTitle           String?  @default("كوني الأجمل في كل إطلالة مع Fashion Zone")

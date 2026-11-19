@@ -113,6 +113,10 @@ interface SiteSettings {
   heroBannerTitle?: string;
   heroBannerSubtitle?: string;
   heroBannerBadge?: string;
+  heroBannerCtaText?: string;
+  heroBannerCtaLink?: string;
+  heroBannerImage?: string;
+  heroBannerEnabled?: boolean;
   heroTitle?: string;
   heroSubtitle?: string;
   heroImage?: string;
@@ -161,6 +165,13 @@ export default function AdminPage() {
     heroCouponDiscount: 'خصم 10%',
     heroCtaText: 'تسوقي الآن / Shop Now',
     heroCtaLink: '#catalog',
+    heroBannerTitle: 'خصم يصل إلى 35% على تشكيلة فساتين السهرة الفاخرة!',
+    heroBannerSubtitle: 'استمتعي بأفضل الأسعار مع خامات مستوردة أصلية 100% وشحن مجاني حتى باب منزلك مع إمكانية المعاينة.',
+    heroBannerBadge: 'عرض محدود لفترة وجيزة',
+    heroBannerCtaText: 'تصفحي العروض الآن',
+    heroBannerCtaLink: '#catalog',
+    heroBannerImage: '',
+    heroBannerEnabled: true,
   });
 
   const [loading, setLoading] = useState(false);
@@ -212,9 +223,10 @@ export default function AdminPage() {
   const [couponVal, setCouponVal] = useState('');
   const [couponMinOrder, setCouponMinOrder] = useState('0');
 
-  // Ad & Hero Image Uploader state
+  // Ad, Hero & Banner Image Uploader state
   const [uploadingAdImage, setUploadingAdImage] = useState(false);
   const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
+  const [uploadingMidBannerImage, setUploadingMidBannerImage] = useState(false);
   const [showAdPreviewModal, setShowAdPreviewModal] = useState(false);
 
   // Orders filter & tracking edit
@@ -418,7 +430,37 @@ export default function AdminPage() {
     }
   };
 
-  // Generate 3 Realistic Positive Customer Reviews
+  // Upload Mid-page Promo Banner Image to Cloudinary
+  const handleMidBannerImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingMidBannerImage(true);
+    try {
+      const file = files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data.success && data.url) {
+        setSettings((prev) => ({ ...prev, heroBannerImage: data.url }));
+        setSuccessMessage('تم رفع صورة بنر العروض بنجاح!');
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        alert('تعذر رفع الصورة: ' + (data.error || 'خطأ'));
+      }
+    } catch (err: any) {
+      alert('خطأ أثناء الرفع: ' + err.message);
+    } finally {
+      setUploadingMidBannerImage(false);
+      e.target.value = '';
+    }
+  };
   const generateRealisticReviews = () => {
     const realisticTemplates = [
       {
@@ -2317,7 +2359,166 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Section 2: Promo Popup Modal Control */}
+              {/* Section 2: Special Offer Mid-Page Banner (بنر العروض والخصومات بالصفحة الرئيسية - المعروض بالصورة) */}
+              <div className="space-y-5 p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-rose-50/60 via-pink-50/40 to-rose-50/60 border border-pink-200">
+                <div className="flex items-center justify-between pb-3 border-b border-pink-200">
+                  <div className="flex items-center gap-2">
+                    <Megaphone className="w-5 h-5 text-rose-500" />
+                    <div>
+                      <h3 className="font-bold text-sm text-stone-900">
+                        🎯 بنر العروض والتخفيضات المميزة بالصفحة الرئيسية (Special Offer Banner)
+                      </h3>
+                      <p className="text-[11px] text-stone-500">
+                        البنر الإعلاني العريض في منتصف الصفحة (خصم الـ 35%، نص العرض، زر تصفحي العروض الآن، وصورة العرض)
+                      </p>
+                    </div>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-pink-200 shadow-xs">
+                    <input
+                      type="checkbox"
+                      checked={settings.heroBannerEnabled !== false}
+                      onChange={(e) => setSettings({ ...settings, heroBannerEnabled: e.target.checked })}
+                      className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-400"
+                    />
+                    <span className="text-xs font-bold text-stone-700">تفعيل إظهار البنر</span>
+                  </label>
+                </div>
+
+                {/* Live Banner Preview (كما يظهر للعميلة بالظبط كما في سكرين شوت المستخدم) */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-stone-700">معاينة حية لشكل البنر في المتجر:</label>
+                  <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-rose-600 via-pink-600 to-rose-500 text-white p-6 shadow-md">
+                    <div className="relative z-10 space-y-2.5 max-w-lg">
+                      <span className="inline-block bg-white/20 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">
+                        {settings.heroBannerBadge || 'عرض محدود لفترة وجيزة'}
+                      </span>
+                      <h4 className="text-lg sm:text-xl font-black leading-snug font-serif">
+                        {settings.heroBannerTitle || 'خصم يصل إلى 35% على تشكيلة فساتين السهرة الفاخرة!'}
+                      </h4>
+                      <p className="text-pink-100 text-xs leading-relaxed line-clamp-2">
+                        {settings.heroBannerSubtitle || 'استمتعي بأفضل الأسعار مع خامات مستوردة أصلية 100% وشحن مجاني حتى باب منزلك مع إمكانية المعاينة.'}
+                      </p>
+                      <div className="pt-1">
+                        <span className="inline-block px-5 py-2 bg-white text-rose-600 font-black rounded-full text-xs shadow">
+                          {settings.heroBannerCtaText || 'تصفحي العروض الآن'}
+                        </span>
+                      </div>
+                    </div>
+                    {settings.heroBannerImage && (
+                      <div className="absolute top-4 left-4 bottom-4 w-1/3 rounded-xl overflow-hidden border border-white/20 hidden sm:block">
+                        <Image src={settings.heroBannerImage} alt="" fill className="object-cover" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Form Controls */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      بادج العرض العلوي (Badge)
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.heroBannerBadge || ''}
+                      onChange={(e) => setSettings({ ...settings, heroBannerBadge: e.target.value })}
+                      placeholder="عرض محدود لفترة وجيزة"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      عنوان العرض الرئيسي (Title) *
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.heroBannerTitle || ''}
+                      onChange={(e) => setSettings({ ...settings, heroBannerTitle: e.target.value })}
+                      placeholder="خصم يصل إلى 35% على تشكيلة فساتين السهرة الفاخرة!"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 font-bold"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    نص وتفاصيل العرض (Subtitle)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={settings.heroBannerSubtitle || ''}
+                    onChange={(e) => setSettings({ ...settings, heroBannerSubtitle: e.target.value })}
+                    placeholder="اكتبي تفاصيل العرض والخصومات والخامات والشحن..."
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      نص الزر التفاعلي (Button Text)
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.heroBannerCtaText || ''}
+                      onChange={(e) => setSettings({ ...settings, heroBannerCtaText: e.target.value })}
+                      placeholder="تصفحي العروض الآن"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      رابط التوجيه عند النقر (Button Link)
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.heroBannerCtaLink || ''}
+                      onChange={(e) => setSettings({ ...settings, heroBannerCtaLink: e.target.value })}
+                      placeholder="#catalog أو /category/dresses"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Optional Banner Image Upload */}
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    صورة مرافقة للبنر (اختياري - ترفع لـ Cloudinary)
+                  </label>
+                  {settings.heroBannerImage ? (
+                    <div className="relative w-full h-32 rounded-2xl overflow-hidden border border-pink-200 mb-2">
+                      <Image src={settings.heroBannerImage} alt="Banner image" fill className="object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setSettings({ ...settings, heroBannerImage: '' })}
+                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full shadow"
+                        title="إزالة الصورة"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="w-full h-20 rounded-2xl border-2 border-dashed border-pink-300 hover:border-rose-500 bg-white flex flex-col items-center justify-center cursor-pointer transition">
+                      <Upload className="w-5 h-5 text-rose-500 mb-0.5" />
+                      <span className="text-xs font-bold text-rose-600">
+                        {uploadingMidBannerImage ? 'جاري رفع صورة البنر...' : 'رفع صورة إضافية للبنر (اختياري)'}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleMidBannerImageUpload}
+                        disabled={uploadingMidBannerImage}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              {/* Section 3: Promo Popup Modal Control */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-pink-100">
                   <div className="flex items-center gap-2">

@@ -23,6 +23,13 @@ export default function HomePage() {
     heroCouponDiscount: 'خصم 10%',
     heroCtaText: 'تسوقي الآن / Shop Now',
     heroCtaLink: '#catalog',
+    heroBannerTitle: 'خصم يصل إلى 35% على تشكيلة فساتين السهرة الفاخرة!',
+    heroBannerSubtitle: 'استمتعي بأفضل الأسعار مع خامات مستوردة أصلية 100% وشحن مجاني حتى باب منزلك مع إمكانية المعاينة.',
+    heroBannerBadge: 'عرض محدود لفترة وجيزة',
+    heroBannerCtaText: 'تصفحي العروض الآن',
+    heroBannerCtaLink: '#catalog',
+    heroBannerImage: '',
+    heroBannerEnabled: true,
   });
 
   // Fetch live products and hero settings from MySQL on mount
@@ -43,6 +50,13 @@ export default function HomePage() {
             heroCouponDiscount: data.settings.heroCouponDiscount || prev.heroCouponDiscount,
             heroCtaText: data.settings.heroCtaText || prev.heroCtaText,
             heroCtaLink: data.settings.heroCtaLink || prev.heroCtaLink,
+            heroBannerTitle: data.settings.heroBannerTitle || prev.heroBannerTitle,
+            heroBannerSubtitle: data.settings.heroBannerSubtitle || prev.heroBannerSubtitle,
+            heroBannerBadge: data.settings.heroBannerBadge || prev.heroBannerBadge,
+            heroBannerCtaText: data.settings.heroBannerCtaText || prev.heroBannerCtaText,
+            heroBannerCtaLink: data.settings.heroBannerCtaLink || prev.heroBannerCtaLink,
+            heroBannerImage: data.settings.heroBannerImage !== undefined ? data.settings.heroBannerImage : prev.heroBannerImage,
+            heroBannerEnabled: data.settings.heroBannerEnabled !== undefined ? data.settings.heroBannerEnabled : prev.heroBannerEnabled,
           }));
         }
       })
@@ -314,34 +328,53 @@ export default function HomePage() {
       </section>
 
       {/* ========================================================
-          CHIC SPECIAL OFFER BANNER
+          CHIC SPECIAL OFFER BANNER (مربوط بالكامل بلوحة التحكم)
       ======================================================== */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-rose-600 via-pink-600 to-rose-500 text-white p-8 sm:p-12 shadow-rose-glow">
-          <div className="relative z-10 max-w-xl space-y-4">
-            <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">
-              عرض محدود لفترة وجيزة
-            </span>
-            <h2 className="text-2xl sm:text-4xl font-black leading-tight font-serif">
-              خصم يصل إلى 35% على تشكيلة فساتين السهرة الفاخرة!
-            </h2>
-            <p className="text-pink-100 text-sm sm:text-base leading-relaxed">
-              استمتعي بأفضل الأسعار مع خامات مستوردة أصلية 100% وشحن سريع مجاني حتى باب منزلك مع إمكانية المعاينة.
-            </p>
-            <div className="pt-2">
-              <a
-                href="#catalog"
-                className="inline-block px-8 py-3.5 bg-white text-rose-600 hover:bg-pink-50 font-black rounded-full shadow-lg transition active:scale-95 text-sm"
-              >
-                تصفحي العروض الآن
-              </a>
-            </div>
-          </div>
+      {heroSettings.heroBannerEnabled !== false && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-rose-600 via-pink-600 to-rose-500 text-white p-8 sm:p-12 shadow-rose-glow">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-center relative z-10">
+              
+              <div className={`${heroSettings.heroBannerImage ? 'md:col-span-7' : 'md:col-span-12'} space-y-4`}>
+                {heroSettings.heroBannerBadge && (
+                  <span className="inline-block bg-white/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider">
+                    {heroSettings.heroBannerBadge}
+                  </span>
+                )}
+                <h2 className="text-2xl sm:text-4xl font-black leading-tight font-serif">
+                  {heroSettings.heroBannerTitle}
+                </h2>
+                <p className="text-pink-100 text-sm sm:text-base leading-relaxed max-w-xl">
+                  {heroSettings.heroBannerSubtitle}
+                </p>
+                <div className="pt-2">
+                  <a
+                    href={heroSettings.heroBannerCtaLink || '#catalog'}
+                    className="inline-block px-8 py-3.5 bg-white text-rose-600 hover:bg-pink-50 font-black rounded-full shadow-lg transition active:scale-95 text-sm"
+                  >
+                    {heroSettings.heroBannerCtaText || 'تصفحي العروض الآن'}
+                  </a>
+                </div>
+              </div>
 
-          {/* Decorative shapes */}
-          <div className="absolute top-0 left-0 w-80 h-80 bg-white/10 rounded-full blur-2xl -translate-x-20 -translate-y-20 pointer-events-none"></div>
-        </div>
-      </section>
+              {heroSettings.heroBannerImage && (
+                <div className="md:col-span-5 relative aspect-[4/3] rounded-2xl overflow-hidden border-2 border-white/30 shadow-xl">
+                  <Image
+                    src={heroSettings.heroBannerImage}
+                    alt={heroSettings.heroBannerTitle || 'عرض خاص'}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              )}
+
+            </div>
+
+            {/* Decorative shapes */}
+            <div className="absolute top-0 left-0 w-80 h-80 bg-white/10 rounded-full blur-2xl -translate-x-20 -translate-y-20 pointer-events-none"></div>
+          </div>
+        </section>
+      )}
 
       {/* ========================================================
           CUSTOMER REVIEWS / SOCIAL TESTIMONIALS
