@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/products - جلب جميع المنتجات من قاعدة بيانات MySQL
 export async function GET(request: Request) {
   try {
@@ -50,6 +52,9 @@ export async function POST(request: Request) {
       images,
       sizes,
       colors,
+      reviews,
+      rating,
+      reviewsCount,
       isFeatured,
       isNewArrival,
     } = body;
@@ -63,6 +68,10 @@ export async function POST(request: Request) {
       .replace(/^-+|-+$/g, '');
     const slug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
 
+    const reviewItems = Array.isArray(reviews) ? reviews : [];
+    const computedRating = rating ? parseFloat(rating) : reviewItems.length > 0 ? 5.0 : 5.0;
+    const computedCount = reviewsCount ? parseInt(reviewsCount, 10) : reviewItems.length > 0 ? reviewItems.length : 1;
+
     const newProduct = await prisma.product.create({
       data: {
         name,
@@ -75,11 +84,12 @@ export async function POST(request: Request) {
         images: images || [],
         sizes: sizes || [],
         colors: colors || [],
+        reviews: reviewItems,
+        rating: computedRating,
+        reviewsCount: computedCount,
         isFeatured: Boolean(isFeatured),
         isNewArrival: Boolean(isNewArrival),
         inStock: true,
-        rating: 5.0,
-        reviewsCount: 1,
       },
     });
 

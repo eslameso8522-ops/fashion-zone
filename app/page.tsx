@@ -12,9 +12,42 @@ export default function HomePage() {
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [categories, setCategories] = useState(CATEGORIES);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'dresses' | 'featured' | 'sale'>('all');
+  const [heroSettings, setHeroSettings] = useState({
+    heroTitle: 'كوني الأجمل في كل إطلالة مع Fashion Zone',
+    heroSubtitle: 'اكتشفي تشكيلة راقية ومختارة بعناية من فساتين السهرة الناعمة، العبايات المطرزة، الحقائب والمجوهرات التي تزيدكِ تألقاً وسحراً.',
+    heroImage: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1000&auto=format&fit=crop&q=80',
+    heroBadgeText: 'أعلى تقييم ⭐ 4.9',
+    heroBadgeSubtext: 'أزياء صيف 2026',
+    heroCouponTitle: 'كود الخصم الفوري',
+    heroCouponCode: 'GIRL10',
+    heroCouponDiscount: 'خصم 10%',
+    heroCtaText: 'تسوقي الآن / Shop Now',
+    heroCtaLink: '#catalog',
+  });
 
-  // Fetch live products from MySQL on mount
+  // Fetch live products and hero settings from MySQL on mount
   useEffect(() => {
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings) {
+          setHeroSettings((prev) => ({
+            ...prev,
+            heroTitle: data.settings.heroTitle || prev.heroTitle,
+            heroSubtitle: data.settings.heroSubtitle || prev.heroSubtitle,
+            heroImage: data.settings.heroImage || prev.heroImage,
+            heroBadgeText: data.settings.heroBadgeText || prev.heroBadgeText,
+            heroBadgeSubtext: data.settings.heroBadgeSubtext || prev.heroBadgeSubtext,
+            heroCouponTitle: data.settings.heroCouponTitle || prev.heroCouponTitle,
+            heroCouponCode: data.settings.heroCouponCode || prev.heroCouponCode,
+            heroCouponDiscount: data.settings.heroCouponDiscount || prev.heroCouponDiscount,
+            heroCtaText: data.settings.heroCtaText || prev.heroCtaText,
+            heroCtaLink: data.settings.heroCtaLink || prev.heroCtaLink,
+          }));
+        }
+      })
+      .catch((err) => console.log('Loaded default settings', err));
+
     fetch('/api/products')
       .then((res) => res.json())
       .then((data) => {
@@ -35,8 +68,9 @@ export default function HomePage() {
             isFeatured: p.isFeatured,
             isNewArrival: p.isNewArrival,
             inStock: p.inStock,
-            rating: p.rating,
-            reviewsCount: p.reviewsCount,
+            rating: p.rating || 5.0,
+            reviewsCount: p.reviewsCount || (p.reviews?.length || 0),
+            reviews: p.reviews || [],
           }));
           setProducts(mapped);
         }
@@ -78,23 +112,30 @@ export default function HomePage() {
               </div>
 
               <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-stone-900 leading-tight">
-                كوني الأجمل في كل إطلالة مع{' '}
-                <span className="bg-gradient-to-r from-rose-600 via-pink-500 to-rosegold-500 bg-clip-text text-transparent font-serif">
-                  Fashion Zone
-                </span>
+                {heroSettings.heroTitle.includes('Fashion Zone') ? (
+                  <>
+                    {heroSettings.heroTitle.split('Fashion Zone')[0]}
+                    <span className="bg-gradient-to-r from-rose-600 via-pink-500 to-rosegold-500 bg-clip-text text-transparent font-serif">
+                      Fashion Zone
+                    </span>
+                    {heroSettings.heroTitle.split('Fashion Zone')[1]}
+                  </>
+                ) : (
+                  heroSettings.heroTitle
+                )}
               </h1>
 
               <p className="text-stone-600 text-sm sm:text-base md:text-lg max-w-xl leading-relaxed mx-auto lg:mx-0">
-                اكتشفي تشكيلة راقية ومختارة بعناية من فساتين السهرة الناعمة، العبايات المطرزة، الحقائب والمجوهرات التي تزيدكِ تألقاً وسحراً.
+                {heroSettings.heroSubtitle}
               </p>
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-3 pt-2">
                 <a
-                  href="#catalog"
+                  href={heroSettings.heroCtaLink || '#catalog'}
                   className="w-full sm:w-auto px-8 py-4 rounded-full bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 hover:from-rose-600 hover:to-pink-600 text-white font-bold text-base shadow-soft-pink hover:shadow-lg transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2"
                 >
-                  <span>تسوقي الآن / Shop Now</span>
+                  <span>{heroSettings.heroCtaText || 'تسوقي الآن / Shop Now'}</span>
                   <ArrowLeft className="w-5 h-5" />
                 </a>
 
@@ -127,32 +168,34 @@ export default function HomePage() {
             <div className="relative mx-auto w-full max-w-md lg:max-w-none">
               <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
                 <Image
-                  src="https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1000&auto=format&fit=crop&q=80"
+                  src={heroSettings.heroImage || 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1000&auto=format&fit=crop&q=80'}
                   alt="Fashion Zone New Collection"
                   fill
                   priority
                   className="object-cover object-top"
                 />
                 
-                {/* Floating chic badge 1 */}
+                {/* Floating chic badge 1 (Rating / Tag) */}
                 <div className="absolute top-6 right-6 bg-white/90 backdrop-blur-md py-2 px-4 rounded-2xl shadow-soft-pink border border-pink-100 flex items-center gap-2">
                   <span className="w-8 h-8 rounded-full bg-pink-100 text-rose-600 flex items-center justify-center font-bold text-xs">
-                    4.9★
+                    ⭐
                   </span>
                   <div>
-                    <p className="text-[11px] font-bold text-stone-800">أعلى تقييم</p>
-                    <p className="text-[10px] text-stone-500">أزياء صيف 2026</p>
+                    <p className="text-[11px] font-bold text-stone-800">{heroSettings.heroBadgeText || 'أعلى تقييم'}</p>
+                    <p className="text-[10px] text-stone-500">{heroSettings.heroBadgeSubtext || 'أزياء صيف 2026'}</p>
                   </div>
                 </div>
 
-                {/* Floating chic badge 2 */}
+                {/* Floating chic badge 2 (Promo Coupon) */}
                 <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-md py-3 px-4 rounded-2xl shadow-soft-pink border border-pink-100 flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-400 to-rose-500 text-white flex items-center justify-center">
                     <Sparkles className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-xs font-bold text-stone-800">كود الخصم الفوري</p>
-                    <p className="text-sm font-black text-rose-600">GIRL10 (خصم 10%)</p>
+                    <p className="text-xs font-bold text-stone-800">{heroSettings.heroCouponTitle || 'كود الخصم الفوري'}</p>
+                    <p className="text-sm font-black text-rose-600">
+                      {heroSettings.heroCouponCode || 'GIRL10'} {heroSettings.heroCouponDiscount ? `(${heroSettings.heroCouponDiscount})` : ''}
+                    </p>
                   </div>
                 </div>
               </div>

@@ -37,6 +37,7 @@ import {
   Megaphone,
   Gift,
   Copy,
+  Star,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -112,6 +113,16 @@ interface SiteSettings {
   heroBannerTitle?: string;
   heroBannerSubtitle?: string;
   heroBannerBadge?: string;
+  heroTitle?: string;
+  heroSubtitle?: string;
+  heroImage?: string;
+  heroBadgeText?: string;
+  heroBadgeSubtext?: string;
+  heroCouponTitle?: string;
+  heroCouponCode?: string;
+  heroCouponDiscount?: string;
+  heroCtaText?: string;
+  heroCtaLink?: string;
 }
 
 type TabType = 'overview' | 'products' | 'categories' | 'orders' | 'coupons' | 'ads_settings';
@@ -140,9 +151,16 @@ export default function AdminPage() {
     promoPopupImage: '',
     promoCouponCode: 'GIRL10',
     promoPopupEnabled: true,
-    heroBannerTitle: 'تشكيلة الخريف والشتاء الفاخرة',
-    heroBannerSubtitle: 'تألقي بأحدث فساتين السهرة والعبايات الراقية بتصميمات ساحرة',
-    heroBannerBadge: 'خصومات حصرية لفترة محدودة 🔥',
+    heroTitle: 'كوني الأجمل في كل إطلالة مع Fashion Zone',
+    heroSubtitle: 'اكتشفي تشكيلة راقية ومختارة بعناية من فساتين السهرة الناعمة، العبايات المطرزة، الحقائب والمجوهرات التي تزيدكِ تألقاً وسحراً.',
+    heroImage: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1000&auto=format&fit=crop&q=80',
+    heroBadgeText: 'أعلى تقييم ⭐ 4.9',
+    heroBadgeSubtext: 'أزياء صيف 2026',
+    heroCouponTitle: 'كود الخصم الفوري',
+    heroCouponCode: 'GIRL10',
+    heroCouponDiscount: 'خصم 10%',
+    heroCtaText: 'تسوقي الآن / Shop Now',
+    heroCtaLink: '#catalog',
   });
 
   const [loading, setLoading] = useState(false);
@@ -165,6 +183,21 @@ export default function AdminPage() {
   const [isNewArrival, setIsNewArrival] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Product Reviews Builder states
+  const [productReviews, setProductReviews] = useState<Array<{
+    id: string;
+    name: string;
+    rating: number;
+    comment: string;
+    city?: string;
+    date: string;
+    verified: boolean;
+  }>>([]);
+  const [newReviewAuthor, setNewReviewAuthor] = useState('');
+  const [newReviewCity, setNewReviewCity] = useState('');
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewComment, setNewReviewComment] = useState('');
+
   // Category Form states
   const [newCatName, setNewCatName] = useState('');
   const [newCatImage, setNewCatImage] = useState('');
@@ -179,8 +212,9 @@ export default function AdminPage() {
   const [couponVal, setCouponVal] = useState('');
   const [couponMinOrder, setCouponMinOrder] = useState('0');
 
-  // Ad Image Uploader state
+  // Ad & Hero Image Uploader state
   const [uploadingAdImage, setUploadingAdImage] = useState(false);
+  const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
   const [showAdPreviewModal, setShowAdPreviewModal] = useState(false);
 
   // Orders filter & tracking edit
@@ -352,6 +386,95 @@ export default function AdminPage() {
     }
   };
 
+  // Upload Hero Banner Image to Cloudinary
+  const handleHeroImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingHeroImage(true);
+    try {
+      const file = files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (data.success && data.url) {
+        setSettings((prev) => ({ ...prev, heroImage: data.url }));
+        setSuccessMessage('تم رفع وتعيين صورة الهيدر بنجاح!');
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        alert('تعذر رفع الصورة: ' + (data.error || 'خطأ'));
+      }
+    } catch (err: any) {
+      alert('خطأ أثناء الرفع: ' + err.message);
+    } finally {
+      setUploadingHeroImage(false);
+      e.target.value = '';
+    }
+  };
+
+  // Generate 3 Realistic Positive Customer Reviews
+  const generateRealisticReviews = () => {
+    const realisticTemplates = [
+      {
+        id: 'rev-' + Math.random().toString(36).substring(2, 9),
+        name: 'سارة محمود',
+        city: 'القاهرة',
+        rating: 5,
+        comment: 'الخامة تحفة ما شاء الله والمقاس مظبوط جداً زي الصورة بالظبط، والتوصيل كان سريع في أقل من يومين! شكراً فاشون زون على الذوق والاهتمام ❤️',
+        date: 'منذ يومين',
+        verified: true,
+      },
+      {
+        id: 'rev-' + Math.random().toString(36).substring(2, 9),
+        name: 'نورهان الشريف',
+        city: 'الإسكندرية',
+        rating: 5,
+        comment: 'الموديل يجنن باللبس وملمس القماش ناعم وراقي جداً، الكل سألني عنه في المناسبة! تجربة تسوق راقية وهطلب تاني بالتأكيد ✨',
+        date: 'منذ 4 أيام',
+        verified: true,
+      },
+      {
+        id: 'rev-' + Math.random().toString(36).substring(2, 9),
+        name: 'مريم كمال',
+        city: 'الجيزة',
+        rating: 5,
+        comment: 'ما كنت متوقعة الجودة تكون بهالروعة بصراحة! التغليف أنيق جداً وريحة العطر مع اللبس فخمة، تستاهلوا 5 نجوم وأكثر 👌',
+        date: 'منذ أسبوع',
+        verified: true,
+      },
+    ];
+
+    setProductReviews(realisticTemplates);
+    confetti({ particleCount: 40, spread: 50 });
+  };
+
+  // Add Custom Review Manually
+  const handleAddCustomReview = () => {
+    if (!newReviewAuthor.trim()) {
+      alert('يرجى كتابة اسم العميلة أولاً');
+      return;
+    }
+    const newRev = {
+      id: 'rev-' + Math.random().toString(36).substring(2, 9),
+      name: newReviewAuthor.trim(),
+      city: newReviewCity.trim() || 'مصر',
+      rating: newReviewRating || 5,
+      comment: newReviewComment.trim() || 'منتج ممتاز وخامة راقية جداً وتوصيل سريع، أنصح به بشدة!',
+      date: 'اليوم',
+      verified: true,
+    };
+    setProductReviews((prev) => [newRev, ...prev]);
+    setNewReviewAuthor('');
+    setNewReviewCity('');
+    setNewReviewComment('');
+  };
+
   // Create Category
   const handleCreateCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -442,6 +565,10 @@ export default function AdminPage() {
 
     setLoading(true);
     try {
+      const computedRating = productReviews.length > 0
+        ? Number((productReviews.reduce((acc, r) => acc + (r.rating || 5), 0) / productReviews.length).toFixed(1))
+        : 5.0;
+
       const res = await fetch('/api/products', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -457,6 +584,9 @@ export default function AdminPage() {
           colors: selectedColors,
           isFeatured,
           isNewArrival,
+          reviews: productReviews,
+          rating: computedRating,
+          reviewsCount: productReviews.length || 18,
         }),
       });
 
@@ -471,6 +601,7 @@ export default function AdminPage() {
         setPrice('');
         setOriginalPrice('');
         setUploadedImages([]);
+        setProductReviews([]);
         setShowAddProductModal(false);
         fetchData();
         setTimeout(() => setSuccessMessage(''), 5000);
@@ -1197,6 +1328,109 @@ export default function AdminPage() {
                     </div>
                   </div>
 
+                  {/* Reviews & Social Proof Builder for this product */}
+                  <div className="pt-4 border-t border-pink-100 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-stone-800">
+                          ⭐ تجارب وريفيوهات العميلات الواقعية (Social Proof)
+                        </label>
+                        <p className="text-[11px] text-stone-400">
+                          يمكنكِ توليد 3 ريفيوهات تلقائية ممتازة ومقنعة بنقرة واحدة، أو كتابة ريفيوهات مخصصة
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={generateRealisticReviews}
+                        className="bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white text-[11px] font-bold px-3.5 py-1.5 rounded-xl shadow-sm transition flex items-center gap-1.5 self-start sm:self-auto"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>🪄 توليد 3 ريفيوهات تلقائية جاهزة</span>
+                      </button>
+                    </div>
+
+                    {/* Review List */}
+                    {productReviews.length > 0 && (
+                      <div className="space-y-2 bg-pink-50/50 p-3 rounded-2xl border border-pink-200">
+                        {productReviews.map((rev, index) => (
+                          <div
+                            key={rev.id || index}
+                            className="bg-white p-3 rounded-xl border border-pink-100 shadow-xs flex items-start justify-between gap-3 text-xs"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-stone-800">{rev.name}</span>
+                                {rev.city && <span className="text-[10px] text-stone-400">({rev.city})</span>}
+                                <span className="text-amber-500 font-bold text-[11px]">
+                                  {'★'.repeat(rev.rating)}
+                                </span>
+                                {rev.verified && (
+                                  <span className="text-[9px] bg-emerald-100 text-emerald-700 font-bold px-1.5 py-0.5 rounded-full">
+                                    شراء مؤكد ✓
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-stone-600 text-[11px]">"{rev.comment}"</p>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => setProductReviews((prev) => prev.filter((_, i) => i !== index))}
+                              className="text-stone-400 hover:text-red-500 p-1"
+                              title="حذف هذا الريفيو"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add Custom Review Manually */}
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1">
+                      <input
+                        type="text"
+                        placeholder="اسم العميلة (مثال: منى حسن)"
+                        value={newReviewAuthor}
+                        onChange={(e) => setNewReviewAuthor(e.target.value)}
+                        className="text-xs px-3 py-2 rounded-xl border border-pink-200 focus:outline-none"
+                      />
+                      <input
+                        type="text"
+                        placeholder="المدينة (مثال: المنصورة)"
+                        value={newReviewCity}
+                        onChange={(e) => setNewReviewCity(e.target.value)}
+                        className="text-xs px-3 py-2 rounded-xl border border-pink-200 focus:outline-none"
+                      />
+                      <select
+                        value={newReviewRating}
+                        onChange={(e) => setNewReviewRating(Number(e.target.value))}
+                        className="text-xs px-2 py-2 rounded-xl border border-pink-200 focus:outline-none"
+                      >
+                        <option value={5}>⭐⭐⭐⭐⭐ (5 نجوم)</option>
+                        <option value={4}>⭐⭐⭐⭐ (4 نجوم)</option>
+                        <option value={3}>⭐⭐⭐ (3 نجوم)</option>
+                      </select>
+                      <button
+                        type="button"
+                        onClick={handleAddCustomReview}
+                        className="bg-white hover:bg-pink-50 text-rose-600 border border-pink-300 text-xs font-bold px-3 py-2 rounded-xl transition"
+                      >
+                        + إضافة الريفيو
+                      </button>
+                    </div>
+                    {newReviewAuthor && (
+                      <input
+                        type="text"
+                        placeholder="نص تعليق العميلة ورأيها في الخامة والتوصيل..."
+                        value={newReviewComment}
+                        onChange={(e) => setNewReviewComment(e.target.value)}
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-pink-200 focus:outline-none"
+                      />
+                    )}
+                  </div>
+
                   {/* Submit Button */}
                   <div className="flex justify-end gap-3 pt-4 border-t border-pink-100">
                     <button
@@ -1869,7 +2103,221 @@ export default function AdminPage() {
 
             <form onSubmit={handleSaveSettings} className="bg-white rounded-3xl p-6 sm:p-8 border border-pink-100 shadow-sm space-y-8">
               
-              {/* Section 1: Promo Popup Modal Control */}
+              {/* Section 1: Hero Header Banner Section (الصورة والكوبون والهيدر) */}
+              <div className="space-y-5 p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-pink-50/70 via-rose-50/40 to-pink-50/70 border border-pink-200">
+                <div className="flex items-center justify-between pb-3 border-b border-pink-200">
+                  <div className="flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-rose-500" />
+                    <div>
+                      <h3 className="font-bold text-sm text-stone-900">
+                        👑 تخصيص صورة وكوبون بنر الهيدر الرئيسي (Hero Section)
+                      </h3>
+                      <p className="text-[11px] text-stone-500">
+                        التحكم المباشر في صورة الموديل بالهيدر، البادجات العائمة، كود الخصم، والعناوين
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-rose-600 bg-white px-3 py-1 rounded-full border border-pink-200 shadow-xs">
+                    مباشر في الواجهة ✨
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                  {/* Left: Image Uploader & Live Preview */}
+                  <div className="space-y-3">
+                    <label className="block text-xs font-bold text-stone-700">
+                      صورة الموديل / المنتج الرئيسية بالهيدر:
+                    </label>
+
+                    {settings.heroImage ? (
+                      <div className="relative aspect-[4/5] max-w-xs mx-auto rounded-3xl overflow-hidden border-4 border-white shadow-lg">
+                        <Image src={settings.heroImage} alt="Hero banner" fill className="object-cover object-top" />
+                        
+                        {/* Live Floating Badge 1 preview */}
+                        <div className="absolute top-3 right-3 bg-white/95 py-1.5 px-3 rounded-xl shadow-xs border border-pink-100 text-[10px]">
+                          <span className="font-bold text-stone-800 block">{settings.heroBadgeText || 'أعلى تقييم ⭐ 4.9'}</span>
+                          <span className="text-stone-400 block">{settings.heroBadgeSubtext || 'أزياء صيف 2026'}</span>
+                        </div>
+
+                        {/* Live Floating Badge 2 preview */}
+                        <div className="absolute bottom-3 left-3 bg-white/95 py-1.5 px-3 rounded-xl shadow-xs border border-pink-100 text-[10px]">
+                          <span className="text-stone-700 block font-medium">{settings.heroCouponTitle || 'كود الخصم الفوري'}</span>
+                          <span className="font-black text-rose-600 block">{settings.heroCouponCode || 'GIRL10'} {settings.heroCouponDiscount ? `(${settings.heroCouponDiscount})` : ''}</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setSettings({ ...settings, heroImage: '' })}
+                          className="absolute top-2 left-2 bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow transition"
+                          title="إزالة الصورة"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="aspect-[4/5] max-w-xs mx-auto rounded-3xl border-2 border-dashed border-pink-300 hover:border-rose-500 bg-white flex flex-col items-center justify-center cursor-pointer transition p-4 text-center">
+                        <Upload className="w-8 h-8 text-rose-500 mb-2" />
+                        <span className="text-xs font-bold text-rose-600">
+                          {uploadingHeroImage ? 'جاري رفع الصورة لـ Cloudinary...' : 'رفع صورة الموديل / المنتج'}
+                        </span>
+                        <span className="text-[10px] text-stone-400 mt-1">
+                          يدعم JPG, PNG, WebP (يُفضل صورة عمودية 4:5 عالية الجودة)
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleHeroImageUpload}
+                          disabled={uploadingHeroImage}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+
+                    {/* Quick presets / Direct URL */}
+                    <div>
+                      <label className="block text-[11px] font-medium text-stone-500 mb-1">
+                        أو ضعي رابط الصورة المباشر:
+                      </label>
+                      <input
+                        type="url"
+                        value={settings.heroImage || ''}
+                        onChange={(e) => setSettings({ ...settings, heroImage: e.target.value })}
+                        placeholder="https://..."
+                        className="w-full text-xs px-3 py-2 rounded-xl border border-pink-200 font-mono"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right: Badges, Texts & Coupon settings */}
+                  <div className="space-y-4">
+                    {/* Badge 1 (Rating / Tag) */}
+                    <div className="p-3.5 bg-white rounded-2xl border border-pink-100 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600">
+                        <Star className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                        <span>البادج العائم العلوي (التقييم / التريند):</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-stone-500 mb-0.5">النص الرئيسي</label>
+                          <input
+                            type="text"
+                            value={settings.heroBadgeText || ''}
+                            onChange={(e) => setSettings({ ...settings, heroBadgeText: e.target.value })}
+                            placeholder="أعلى تقييم ⭐ 4.9"
+                            className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-pink-200"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-stone-500 mb-0.5">النص الفرعي</label>
+                          <input
+                            type="text"
+                            value={settings.heroBadgeSubtext || ''}
+                            onChange={(e) => setSettings({ ...settings, heroBadgeSubtext: e.target.value })}
+                            placeholder="أزياء صيف 2026"
+                            className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-pink-200"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Badge 2 (Coupon Badge) */}
+                    <div className="p-3.5 bg-white rounded-2xl border border-pink-100 space-y-2">
+                      <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600">
+                        <Tag className="w-3.5 h-3.5 text-rose-500" />
+                        <span>البادج العائم السفلي (كود الخصم الفوري):</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <label className="block text-[10px] text-stone-500 mb-0.5">عنوان البادج</label>
+                          <input
+                            type="text"
+                            value={settings.heroCouponTitle || ''}
+                            onChange={(e) => setSettings({ ...settings, heroCouponTitle: e.target.value })}
+                            placeholder="كود الخصم الفوري"
+                            className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-pink-200"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-stone-500 mb-0.5">كود الخصم</label>
+                          <input
+                            type="text"
+                            value={settings.heroCouponCode || ''}
+                            onChange={(e) => setSettings({ ...settings, heroCouponCode: e.target.value.toUpperCase() })}
+                            placeholder="GIRL10"
+                            className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-pink-200 font-mono uppercase font-bold"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] text-stone-500 mb-0.5">قيمة الخصم</label>
+                          <input
+                            type="text"
+                            value={settings.heroCouponDiscount || ''}
+                            onChange={(e) => setSettings({ ...settings, heroCouponDiscount: e.target.value })}
+                            placeholder="خصم 10%"
+                            className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-pink-200 font-bold text-rose-600"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Main Title & Subtitle */}
+                    <div className="space-y-2">
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 mb-1">
+                          عنوان الهيدر الرئيسي (Title)
+                        </label>
+                        <input
+                          type="text"
+                          value={settings.heroTitle || ''}
+                          onChange={(e) => setSettings({ ...settings, heroTitle: e.target.value })}
+                          placeholder="كوني الأجمل في كل إطلالة مع Fashion Zone"
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-stone-700 mb-1">
+                          النص الترحيبي الفرعي (Subtitle)
+                        </label>
+                        <textarea
+                          rows={2}
+                          value={settings.heroSubtitle || ''}
+                          onChange={(e) => setSettings({ ...settings, heroSubtitle: e.target.value })}
+                          placeholder="اكتشفي تشكيلة راقية ومختارة بعناية..."
+                          className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200"
+                        />
+                      </div>
+                    </div>
+
+                    {/* CTA Button */}
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-[10px] text-stone-500 mb-0.5">نص زر الشراء</label>
+                        <input
+                          type="text"
+                          value={settings.heroCtaText || ''}
+                          onChange={(e) => setSettings({ ...settings, heroCtaText: e.target.value })}
+                          placeholder="تسوقي الآن / Shop Now"
+                          className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-pink-200"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-stone-500 mb-0.5">رابط الزر</label>
+                        <input
+                          type="text"
+                          value={settings.heroCtaLink || ''}
+                          onChange={(e) => setSettings({ ...settings, heroCtaLink: e.target.value })}
+                          placeholder="#catalog"
+                          className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-pink-200 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                  </div>
+                </div>
+              </div>
+
+              {/* Section 2: Promo Popup Modal Control */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-pink-100">
                   <div className="flex items-center gap-2">

@@ -24,9 +24,16 @@ export async function GET() {
           promoPopupText: 'خصم إضافي 10% بمناسبة إطلاق التشكيلة الجديدة! استخدمي كود الخصم الآن واستمتعي بشحن سريع لباب بيتك.',
           promoCouponCode: 'GIRL10',
           promoPopupEnabled: true,
-          heroBannerTitle: 'تشكيلة الخريف والشتاء الفاخرة',
-          heroBannerSubtitle: 'تألقي بأحدث فساتين السهرة والعبايات الراقية بتصميمات ساحرة',
-          heroBannerBadge: 'خصومات حصرية لفترة محدودة 🔥',
+          heroTitle: 'كوني الأجمل في كل إطلالة مع Fashion Zone',
+          heroSubtitle: 'اكتشفي تشكيلة راقية ومختارة بعناية من فساتين السهرة الناعمة، العبايات المطرزة، الحقائب والمجوهرات التي تزيدكِ تألقاً وسحراً.',
+          heroImage: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1000&auto=format&fit=crop&q=80',
+          heroBadgeText: 'أعلى تقييم ⭐ 4.9',
+          heroBadgeSubtext: 'أزياء صيف 2026',
+          heroCouponTitle: 'كود الخصم الفوري',
+          heroCouponCode: 'GIRL10',
+          heroCouponDiscount: 'خصم 10%',
+          heroCtaText: 'تسوقي الآن / Shop Now',
+          heroCtaLink: '#catalog',
         },
       });
     }
@@ -34,7 +41,6 @@ export async function GET() {
     return NextResponse.json({ success: true, settings });
   } catch (error: any) {
     console.error('Error fetching settings:', error);
-    // Return fallback defaults
     return NextResponse.json({
       success: true,
       settings: {
@@ -49,9 +55,16 @@ export async function GET() {
         promoPopupText: 'خصم إضافي 10% بمناسبة إطلاق التشكيلة الجديدة! استخدمي كود الخصم الآن واستمتعي بشحن سريع لباب بيتك.',
         promoCouponCode: 'GIRL10',
         promoPopupEnabled: true,
-        heroBannerTitle: 'تشكيلة الخريف والشتاء الفاخرة',
-        heroBannerSubtitle: 'تألقي بأحدث فساتين السهرة والعبايات الراقية بتصميمات ساحرة',
-        heroBannerBadge: 'خصومات حصرية لفترة محدودة 🔥',
+        heroTitle: 'كوني الأجمل في كل إطلالة مع Fashion Zone',
+        heroSubtitle: 'اكتشفي تشكيلة راقية ومختارة بعناية من فساتين السهرة الناعمة، العبايات المطرزة، الحقائب والمجوهرات التي تزيدكِ تألقاً وسحراً.',
+        heroImage: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1000&auto=format&fit=crop&q=80',
+        heroBadgeText: 'أعلى تقييم ⭐ 4.9',
+        heroBadgeSubtext: 'أزياء صيف 2026',
+        heroCouponTitle: 'كود الخصم الفوري',
+        heroCouponCode: 'GIRL10',
+        heroCouponDiscount: 'خصم 10%',
+        heroCtaText: 'تسوقي الآن / Shop Now',
+        heroCtaLink: '#catalog',
       },
     });
   }
@@ -76,6 +89,16 @@ export async function POST(request: Request) {
       heroBannerTitle,
       heroBannerSubtitle,
       heroBannerBadge,
+      heroTitle,
+      heroSubtitle,
+      heroImage,
+      heroBadgeText,
+      heroBadgeSubtext,
+      heroCouponTitle,
+      heroCouponCode,
+      heroCouponDiscount,
+      heroCtaText,
+      heroCtaLink,
     } = body;
 
     const dataPayload: any = {};
@@ -95,6 +118,17 @@ export async function POST(request: Request) {
     if (heroBannerSubtitle !== undefined) dataPayload.heroBannerSubtitle = heroBannerSubtitle;
     if (heroBannerBadge !== undefined) dataPayload.heroBannerBadge = heroBannerBadge;
 
+    if (heroTitle !== undefined) dataPayload.heroTitle = heroTitle;
+    if (heroSubtitle !== undefined) dataPayload.heroSubtitle = heroSubtitle;
+    if (heroImage !== undefined) dataPayload.heroImage = heroImage;
+    if (heroBadgeText !== undefined) dataPayload.heroBadgeText = heroBadgeText;
+    if (heroBadgeSubtext !== undefined) dataPayload.heroBadgeSubtext = heroBadgeSubtext;
+    if (heroCouponTitle !== undefined) dataPayload.heroCouponTitle = heroCouponTitle;
+    if (heroCouponCode !== undefined) dataPayload.heroCouponCode = heroCouponCode;
+    if (heroCouponDiscount !== undefined) dataPayload.heroCouponDiscount = heroCouponDiscount;
+    if (heroCtaText !== undefined) dataPayload.heroCtaText = heroCtaText;
+    if (heroCtaLink !== undefined) dataPayload.heroCtaLink = heroCtaLink;
+
     const updated = await prisma.siteSettings.upsert({
       where: { id: 'default' },
       update: dataPayload,
@@ -112,9 +146,16 @@ export async function POST(request: Request) {
         promoPopupImage: promoPopupImage || null,
         promoCouponCode: promoCouponCode || 'GIRL10',
         promoPopupEnabled: promoPopupEnabled !== undefined ? Boolean(promoPopupEnabled) : true,
-        heroBannerTitle: heroBannerTitle || 'تشكيلة الخريف والشتاء الفاخرة',
-        heroBannerSubtitle: heroBannerSubtitle || 'تألقي بأحدث فساتين السهرة والعبايات الراقية بتصميمات ساحرة',
-        heroBannerBadge: heroBannerBadge || 'خصومات حصرية لفترة محدودة 🔥',
+        heroTitle: heroTitle || 'كوني الأجمل في كل إطلالة مع Fashion Zone',
+        heroSubtitle: heroSubtitle || 'اكتشفي تشكيلة راقية ومختارة بعناية...',
+        heroImage: heroImage || 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1000&auto=format&fit=crop&q=80',
+        heroBadgeText: heroBadgeText || 'أعلى تقييم ⭐ 4.9',
+        heroBadgeSubtext: heroBadgeSubtext || 'أزياء صيف 2026',
+        heroCouponTitle: heroCouponTitle || 'كود الخصم الفوري',
+        heroCouponCode: heroCouponCode || 'GIRL10',
+        heroCouponDiscount: heroCouponDiscount || 'خصم 10%',
+        heroCtaText: heroCtaText || 'تسوقي الآن / Shop Now',
+        heroCtaLink: heroCtaLink || '#catalog',
       },
     });
 

@@ -16,6 +16,14 @@ export interface Product {
   inStock: boolean;
   rating: number;
   reviewsCount: number;
+  reviews?: {
+    id?: string;
+    name: string;
+    rating: number;
+    comment: string;
+    date?: string;
+    verified?: boolean;
+  }[];
 }
 
 export interface Category {

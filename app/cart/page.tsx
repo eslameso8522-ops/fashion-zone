@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ShoppingBag, Trash2, ArrowLeft, MessageCircle, Sparkles, CheckCircle2, Tag, Check, X, AlertCircle } from 'lucide-react';
+import { ShoppingBag, Trash2, ArrowLeft, MessageCircle, Sparkles, CheckCircle2, Tag, Check, X, AlertCircle, Truck } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useCart } from '@/lib/cartContext';
 
@@ -195,6 +195,36 @@ _الدفع عند الاستلام بعد المعاينة_`;
           إفراغ السلة
         </button>
       </div>
+
+      {/* Free Shipping Progress Bar */}
+      {(() => {
+        const freeShippingThreshold = 500;
+        const remainingForFreeShipping = Math.max(0, freeShippingThreshold - discountedSubtotal);
+        const shippingProgress = Math.min(100, Math.round((discountedSubtotal / freeShippingThreshold) * 100));
+        return (
+          <div className="mt-6 p-4 rounded-2xl bg-gradient-to-r from-pink-50 via-rose-50 to-pink-50 border border-pink-200/80 shadow-sm">
+            <div className="flex items-center justify-between text-xs sm:text-sm font-bold text-stone-800 mb-2">
+              <div className="flex items-center gap-2">
+                <Truck className="w-4 h-4 text-rose-500 animate-bounce" />
+                {remainingForFreeShipping === 0 ? (
+                  <span className="text-emerald-600">🎉 مبروك! لقد حصلتِ على شحن مجاني لكافة مشترياتكِ!</span>
+                ) : (
+                  <span>
+                    أضيفي بـ <span className="text-rose-600 font-black">{remainingForFreeShipping} جنيه</span> إضافية واحصلي على <span className="text-rose-600">شحن مجاني 🚚</span>
+                  </span>
+                )}
+              </div>
+              <span className="text-xs text-rose-600 font-black">{shippingProgress}%</span>
+            </div>
+            <div className="w-full bg-pink-200/60 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 h-2.5 rounded-full transition-all duration-500 ease-out"
+                style={{ width: `${shippingProgress}%` }}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
         

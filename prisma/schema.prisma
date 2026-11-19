@@ -32,6 +32,7 @@ model Product {
   images        Json      // Array of image URLs
   sizes         Json?     // Array of sizes e.g. ["S", "M", "L"]
   colors        Json?     // Array of color objects [{ name: "وردي", hex: "#fecdd3" }]
+  reviews       Json?     // Array of review objects [{ name, rating, comment, date, verified }]
   isFeatured    Boolean   @default(false)
   isNewArrival  Boolean   @default(false)
   inStock       Boolean   @default(true)
@@ -104,6 +105,18 @@ model SiteSettings {
   heroBannerTitle     String?  @default("تشكيلة الخريف والشتاء الفاخرة")
   heroBannerSubtitle  String?  @default("تألقي بأحدث فساتين السهرة والعبايات الراقية بتصميمات ساحرة")
   heroBannerBadge     String?  @default("خصومات حصرية لفترة محدودة 🔥")
+
+  // Hero Section Dynamic Controls
+  heroTitle           String?  @default("كوني الأجمل في كل إطلالة مع Fashion Zone")
+  heroSubtitle        String?  @default("اكتشفي تشكيلة راقية ومختارة بعناية من فساتين السهرة الناعمة، العبايات المطرزة، الحقائب والمجوهرات التي تزيدكِ تألقاً وسحراً.")
+  heroImage           String?  @db.Text
+  heroBadgeText       String?  @default("أعلى تقييم ⭐ 4.9")
+  heroBadgeSubtext    String?  @default("أزياء صيف 2026")
+  heroCouponTitle     String?  @default("كود الخصم الفوري")
+  heroCouponCode      String?  @default("GIRL10")
+  heroCouponDiscount  String?  @default("خصم 10%")
+  heroCtaText         String?  @default("تسوقي الآن / Shop Now")
+  heroCtaLink         String?  @default("#catalog")
 
   updatedAt           DateTime @updatedAt
 }
