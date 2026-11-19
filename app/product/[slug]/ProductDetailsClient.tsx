@@ -17,12 +17,14 @@ import {
   Flame,
   CheckCircle2,
   ThumbsUp,
+  ZoomIn,
 } from 'lucide-react';
 import { Product } from '@/lib/types';
 import { useCart } from '@/lib/cartContext';
 import ShareButtons from '@/components/ShareButtons';
 import QuickOrderModal from '@/components/QuickOrderModal';
 import SizeGuideModal from '@/components/SizeGuideModal';
+import ImageZoomModal from '@/components/ImageZoomModal';
 
 export default function ProductDetailsClient({ product }: { product: Product }) {
   const { addToCart, toggleWishlist, isInWishlist } = useCart();
@@ -33,6 +35,7 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
   const [addedToast, setAddedToast] = useState(false);
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+  const [zoomModalOpen, setZoomModalOpen] = useState(false);
 
   const isFavorite = isInWishlist(product.id);
 
@@ -61,22 +64,28 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-14">
         
         {/* ========================================================
-            IMAGE GALLERY
+            IMAGE GALLERY WITH INTERACTIVE ZOOM
         ======================================================== */}
         <div className="space-y-4">
-          <div className="relative aspect-[3/4] w-full rounded-3xl overflow-hidden bg-pink-50/50 border border-pink-100 shadow-sm">
+          <div 
+            onClick={() => setZoomModalOpen(true)}
+            className="group relative aspect-[3/4] w-full rounded-3xl overflow-hidden bg-pink-50/50 border border-pink-100 shadow-sm cursor-zoom-in"
+          >
             <Image
               src={activeImage}
               alt={product.name}
               fill
               priority
-              className="object-cover object-top transition-all duration-300"
+              className="object-cover object-top transition-transform duration-300 group-hover:scale-105"
             />
             
             {/* Wishlist button */}
             <button
-              onClick={() => toggleWishlist(product.id)}
-              className="absolute top-4 left-4 w-11 h-11 rounded-full bg-white/90 hover:bg-white text-stone-700 hover:text-rose-500 shadow-md flex items-center justify-center transition active:scale-90"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleWishlist(product.id);
+              }}
+              className="absolute top-4 left-4 w-11 h-11 rounded-full bg-white/90 hover:bg-white text-stone-700 hover:text-rose-500 shadow-md flex items-center justify-center transition active:scale-90 z-10"
               aria-label="المفضلة"
             >
               <Heart
@@ -87,10 +96,16 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
             </button>
 
             {discountPercent > 0 && (
-              <span className="absolute top-4 right-4 bg-rose-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-md">
+              <span className="absolute top-4 right-4 bg-rose-500 text-white text-xs font-black px-3 py-1.5 rounded-full shadow-md z-10">
                 خصم {discountPercent}%
               </span>
             )}
+
+            {/* Click to Zoom Pill Indicator */}
+            <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-sm text-stone-800 text-xs font-bold py-2 px-3.5 rounded-full shadow-lg border border-pink-200/80 flex items-center gap-1.5 transition-all transform group-hover:bg-rose-500 group-hover:text-white group-hover:scale-105 z-10">
+              <ZoomIn className="w-4 h-4 text-rose-500 group-hover:text-white transition-colors" />
+              <span>تكبير وزوم 🔍</span>
+            </div>
           </div>
 
           {/* Thumbnails row */}
@@ -447,6 +462,15 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
       </section>
 
       {/* Modals */}
+      {zoomModalOpen && (
+        <ImageZoomModal
+          images={product.images}
+          initialIndex={Math.max(0, product.images.indexOf(activeImage))}
+          productName={product.name}
+          onClose={() => setZoomModalOpen(false)}
+        />
+      )}
+
       {quickOrderOpen && (
         <QuickOrderModal
           product={product}

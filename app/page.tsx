@@ -125,7 +125,7 @@ export default function HomePage() {
                 <span>تشكيلة فساتين وأناقة حصرية 2026</span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-stone-900 leading-[1.25] tracking-tight">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-[46px] xl:text-5xl font-black text-stone-900 leading-[1.2] tracking-tight">
                 {(() => {
                   const title = heroSettings.heroTitle || 'كوني الأجمل في كل إطلالة مع Fashion Zone';
 
