@@ -43,10 +43,10 @@
 
 ### المتغيرات البيئية المطلوبة في Vercel:
 ```env
-DATABASE_URL="mysql://2KytGbhmPgNgdBr.root:rfxToGmS1vXw8zVS@gateway01.eu-central-1.prod.aws.tidbcloud.com:4000/test?sslaccept=strict"
-NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="p4abpsol"
-CLOUDINARY_API_KEY="199842741455217"
-CLOUDINARY_API_SECRET="30NmDv_fK5TZHQqfSDtG4HJoTpw"
+DATABASE_URL="mysql://username:password@gateway-host:4000/test?sslaccept=strict"
+NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME="your_cloud_name"
+CLOUDINARY_API_KEY="your_api_key"
+CLOUDINARY_API_SECRET="your_api_secret"
 NEXT_PUBLIC_STORE_NAME="Fashion Zone"
 NEXT_PUBLIC_WHATSAPP_NUMBER="201000000000"
 ```
