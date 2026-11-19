@@ -24,6 +24,7 @@ model Product {
   slug          String    @unique
   name          String
   nameEn        String?
+  code          String?   // Product model/catalog code e.g. "3606", "5314"
   description   String    @db.Text
   price         Float
   originalPrice Float?

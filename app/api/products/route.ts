@@ -45,6 +45,7 @@ export async function POST(request: Request) {
     const {
       name,
       nameEn,
+      code,
       description,
       price,
       originalPrice,
@@ -76,6 +77,7 @@ export async function POST(request: Request) {
       data: {
         name,
         nameEn: nameEn || null,
+        code: code || null,
         slug,
         description,
         price: parseFloat(price),

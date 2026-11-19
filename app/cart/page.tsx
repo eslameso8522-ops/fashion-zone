@@ -101,6 +101,7 @@ export default function CartPage() {
           items: cart.map((item) => ({
             productId: item.product.id,
             name: item.product.name,
+            code: (item.product as any).code || null,
             price: item.product.price,
             quantity: item.quantity,
             size: item.selectedSize,
@@ -119,7 +120,7 @@ export default function CartPage() {
     const itemsSummary = cart
       .map(
         (item, index) =>
-          `${index + 1}. *${item.product.name}* \n   - الكمية: ${item.quantity}\n   - المقاس: ${
+          `${index + 1}. *${item.product.name}* ${(item.product as any).code ? `[كود: ${(item.product as any).code}]` : ''}\n   - الكمية: ${item.quantity}\n   - المقاس: ${
             item.selectedSize || 'افتراضي'
           }\n   - اللون: ${item.selectedColor || 'افتراضي'}\n   - السعر: ${
             item.product.price * item.quantity

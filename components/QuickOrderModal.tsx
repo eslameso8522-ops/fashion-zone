@@ -44,6 +44,7 @@ export default function QuickOrderModal({ product, onClose }: QuickOrderModalPro
             {
               productId: product.id,
               name: product.name,
+              code: product.code || null,
               price: product.price,
               quantity: 1,
               size: selectedSize,
@@ -60,7 +61,7 @@ export default function QuickOrderModal({ product, onClose }: QuickOrderModalPro
 
     const orderMessage = `*طلب جديد من متجر Fashion Zone ✨*
 -----------------------------
-👗 *المنتج:* ${product.name}
+👗 *المنتج:* ${product.name} ${product.code ? `[كود: ${product.code}]` : ''}
 💰 *السعر:* ${product.price} جنيه
 📏 *المقاس:* ${selectedSize || 'غير محدد'}
 🎨 *اللون:* ${selectedColor || 'غير محدد'}

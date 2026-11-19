@@ -58,6 +58,7 @@ interface ProductItem {
   slug: string;
   name: string;
   nameEn?: string;
+  code?: string;
   description: string;
   price: number;
   originalPrice?: number;
@@ -183,6 +184,7 @@ export default function AdminPage() {
   const [showAddProductModal, setShowAddProductModal] = useState(false);
   const [name, setName] = useState('');
   const [nameEn, setNameEn] = useState('');
+  const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [originalPrice, setOriginalPrice] = useState('');
@@ -195,6 +197,19 @@ export default function AdminPage() {
   const [isFeatured, setIsFeatured] = useState(true);
   const [isNewArrival, setIsNewArrival] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  // Manual Order Creation states
+  const [showManualOrderModal, setShowManualOrderModal] = useState(false);
+  const [manualCustomerName, setManualCustomerName] = useState('');
+  const [manualCustomerPhone, setManualCustomerPhone] = useState('');
+  const [manualCustomerAddress, setManualCustomerAddress] = useState('');
+  const [manualProductCode, setManualProductCode] = useState('');
+  const [manualProductName, setManualProductName] = useState('');
+  const [manualProductPrice, setManualProductPrice] = useState('');
+  const [manualProductSize, setManualProductSize] = useState('M');
+  const [manualProductColor, setManualProductColor] = useState('أسود');
+  const [manualNotes, setManualNotes] = useState('');
+  const [creatingOrder, setCreatingOrder] = useState(false);
 
   // Product Reviews Builder states
   const [productReviews, setProductReviews] = useState<Array<{
@@ -742,6 +757,8 @@ export default function AdminPage() {
 
     // Apply to product form
     setName(extractedName);
+    const codeMatch = text.match(/(?:كود|CODE|الكود)[\s:➖–=._]*([A-Za-z0-9]+)/i);
+    if (codeMatch) setCode(codeMatch[1].trim());
     if (extractedPrice) setPrice(extractedPrice);
     if (extractedOriginalPrice) setOriginalPrice(extractedOriginalPrice);
     if (detectedSizes.length > 0) setSelectedSizes(detectedSizes);
@@ -821,6 +838,7 @@ export default function AdminPage() {
         body: JSON.stringify({
           name,
           nameEn,
+          code: code.trim() || null,
           description,
           price: parseFloat(price),
           originalPrice: originalPrice ? parseFloat(originalPrice) : null,
@@ -843,6 +861,7 @@ export default function AdminPage() {
         setSuccessMessage(`تمت إضافة منتج "${name}" بنجاح!`);
         setName('');
         setNameEn('');
+        setCode('');
         setDescription('');
         setPrice('');
         setOriginalPrice('');
@@ -858,6 +877,62 @@ export default function AdminPage() {
       alert('خطأ في الاتصال: ' + err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Create Manual Order with Product Code
+  const handleCreateManualOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualCustomerName || !manualProductName || !manualProductPrice) {
+      alert('يرجى إدخال اسم العميلة واسم المنتج وسعره!');
+      return;
+    }
+
+    setCreatingOrder(true);
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: manualCustomerName.trim(),
+          customerPhone: manualCustomerPhone.trim() || 'غير مسجل',
+          customerAddress: manualCustomerAddress.trim() || 'تسجيل يدوي من الإدارة',
+          items: [
+            {
+              name: manualProductName.trim(),
+              code: manualProductCode.trim() || null,
+              price: parseFloat(manualProductPrice),
+              quantity: 1,
+              size: manualProductSize || 'M',
+              color: manualProductColor || 'أسود',
+            },
+          ],
+          total: parseFloat(manualProductPrice),
+          notes: manualNotes.trim() ? `[طلب يدوي] ${manualNotes.trim()}` : 'طلب يدوي مسجل من لوحة التحكم',
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        confetti({ particleCount: 70, spread: 60 });
+        setSuccessMessage(`تم تسجيل الأوردر بكود (${manualProductCode || 'بدون كود'}) بنجاح! 🎉`);
+        setShowManualOrderModal(false);
+        setManualCustomerName('');
+        setManualCustomerPhone('');
+        setManualCustomerAddress('');
+        setManualProductCode('');
+        setManualProductName('');
+        setManualProductPrice('');
+        setManualNotes('');
+        fetchData();
+        setTimeout(() => setSuccessMessage(''), 5000);
+      } else {
+        alert('حدث خطأ: ' + data.error);
+      }
+    } catch (err: any) {
+      alert('خطأ في الاتصال: ' + err.message);
+    } finally {
+      setCreatingOrder(false);
     }
   };
 
@@ -1542,7 +1617,18 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1.5">كود الموديل / Code</label>
+                      <input
+                        type="text"
+                        placeholder="مثال: 3606 أو 5314"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20 font-mono font-bold"
+                      />
+                    </div>
+
                     <div>
                       <label className="block text-xs font-bold text-stone-700 mb-1.5">السعر بالجنيه (EGP) *</label>
                       <input
@@ -1817,7 +1903,14 @@ export default function AdminPage() {
                         </td>
                         <td className="py-3 font-bold text-stone-800">
                           <div>{product.name}</div>
-                          {product.nameEn && <div className="text-[10px] text-stone-400">{product.nameEn}</div>}
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            {product.code && (
+                              <span className="inline-block bg-pink-100 text-rose-700 text-[10px] font-mono px-2 py-0.5 rounded-md font-bold">
+                                كود: {product.code}
+                              </span>
+                            )}
+                            {product.nameEn && <span className="text-[10px] text-stone-400">{product.nameEn}</span>}
+                          </div>
                         </td>
                         <td className="py-3 text-stone-600">{product.category?.name || 'غير محدد'}</td>
                         <td className="py-3 font-bold text-rose-600">{product.price} ج.م</td>
@@ -2141,7 +2234,19 @@ export default function AdminPage() {
                 </p>
               </div>
 
-              {/* Status Filters */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowManualOrderModal(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>تسجيل أوردر يدوي بكود الموديل ➕</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Status Filters & Stats Row */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap gap-1.5 bg-white p-1 rounded-2xl border border-pink-100">
                 {['ALL', 'PENDING', 'PREPARING', 'SHIPPED', 'DELIVERED', 'CANCELLED'].map((st) => (
                   <button
@@ -2168,6 +2273,201 @@ export default function AdminPage() {
                 ))}
               </div>
             </div>
+
+            {/* Manual Order Modal */}
+            {showManualOrderModal && (
+              <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-xl w-full border border-pink-200 shadow-2xl space-y-5 animate-scaleUp max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between pb-3 border-b border-pink-100">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg font-bold">
+                        🛍️
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-stone-900">تسجيل أوردر يدوي بكود الموديل</h3>
+                        <p className="text-xs text-stone-500">إدخال طلب عميلة مباشرة وتحديد كود المنتج والمقاس والسعر</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setShowManualOrderModal(false)}
+                      className="p-1.5 rounded-full text-stone-400 hover:text-stone-700 hover:bg-pink-50"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleCreateManualOrder} className="space-y-4">
+                    {/* Quick Select from existing products */}
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1.5">
+                        اختر منتج من المتجر لتعبئة الكود والاسم تلقائياً (اختياري):
+                      </label>
+                      <select
+                        onChange={(e) => {
+                          const prod = products.find((p) => p.id === e.target.value);
+                          if (prod) {
+                            setManualProductName(prod.name);
+                            setManualProductCode(prod.code || '');
+                            setManualProductPrice(prod.price.toString());
+                          }
+                        }}
+                        defaultValue=""
+                        className="w-full text-xs p-2.5 rounded-xl border border-pink-200 bg-stone-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-rose-400"
+                      >
+                        <option value="">-- أو يمكنك كتابة بيانات الموديل يدوياً بالأسفل --</option>
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.code ? `[كود: ${p.code}] ` : ''}{p.name} - {p.price} ج.م
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1">
+                          كود الموديل (Product Code) ⭐
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="مثال: 3606 أو 5314 أو FZ-101"
+                          value={manualProductCode}
+                          onChange={(e) => setManualProductCode(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 font-mono font-bold text-rose-600 bg-pink-50/30"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1">
+                          اسم المنتج / الموديل *
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="مثال: سويت شيرت ميلتون تقيل"
+                          value={manualProductName}
+                          onChange={(e) => setManualProductName(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1">السعر (ج.م) *</label>
+                        <input
+                          type="number"
+                          required
+                          min="0"
+                          placeholder="450"
+                          value={manualProductPrice}
+                          onChange={(e) => setManualProductPrice(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 font-bold"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1">المقاس</label>
+                        <input
+                          type="text"
+                          placeholder="M, L, XL, أو فري سايز"
+                          value={manualProductSize}
+                          onChange={(e) => setManualProductSize(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1">اللون</label>
+                        <input
+                          type="text"
+                          placeholder="أسود، كشمير، زيتي..."
+                          value={manualProductColor}
+                          onChange={(e) => setManualProductColor(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="border-t border-pink-100 pt-3 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 mb-1">اسم العميلة *</label>
+                          <input
+                            type="text"
+                            required
+                            placeholder="مثال: مدام مروة"
+                            value={manualCustomerName}
+                            onChange={(e) => setManualCustomerName(e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-stone-700 mb-1">رقم الهاتف / واتساب</label>
+                          <input
+                            type="text"
+                            placeholder="010XXXXXXXX"
+                            value={manualCustomerPhone}
+                            onChange={(e) => setManualCustomerPhone(e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1">العنوان بالتفصيل</label>
+                        <input
+                          type="text"
+                          placeholder="المحافظة - المدينة - الشارع"
+                          value={manualCustomerAddress}
+                          onChange={(e) => setManualCustomerAddress(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-stone-700 mb-1">ملاحظات إضافية</label>
+                        <textarea
+                          rows={2}
+                          placeholder="أي ملاحظات خاصة بالتوصيل أو الاتصال..."
+                          value={manualNotes}
+                          onChange={(e) => setManualNotes(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 resize-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowManualOrderModal(false)}
+                        className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100"
+                      >
+                        إلغاء
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={creatingOrder}
+                        className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition flex items-center gap-2"
+                      >
+                        {creatingOrder ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>جاري تسجيل الأوردر...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span>تأكيد وتسجيل الأوردر الآن</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
 
             {/* Search Orders */}
             <div className="bg-white p-4 rounded-2xl border border-pink-100 shadow-sm flex items-center gap-2">
@@ -2340,8 +2640,14 @@ export default function AdminPage() {
                                 key={idx}
                                 className="flex items-center gap-2 bg-stone-50 px-3 py-1.5 rounded-xl border border-stone-200 text-xs"
                               >
+                                {item.code && (
+                                  <span className="bg-pink-100 text-rose-700 font-mono font-bold text-[10px] px-1.5 py-0.5 rounded border border-pink-200">
+                                    كود: {item.code}
+                                  </span>
+                                )}
                                 <span className="font-bold text-stone-800">{item.name}</span>
                                 {item.size && <span className="text-stone-500">({item.size})</span>}
+                                {item.color && <span className="text-stone-500">({item.color})</span>}
                                 <span className="text-rose-600 font-bold">x{item.quantity || 1}</span>
                               </div>
                             ))}

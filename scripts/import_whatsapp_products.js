@@ -88,8 +88,12 @@ function extractProductInfo(text, index) {
 
   // Check code
   let code = '';
-  const codeMatch = clean.match(/(?:كود|CODE|الكود)[:\s\-–]*([A-Z0-9]+)/i);
-  if (codeMatch) code = codeMatch[1];
+  const codeMatch = clean.match(/(?:كود|CODE|الكود)[\s:➖–=._]*([A-Za-z0-9]+)/i);
+  if (codeMatch) {
+    code = codeMatch[1].trim();
+  } else {
+    code = `FZ-${String(index + 101).padStart(3, '0')}`;
+  }
 
   // Try to find descriptive first or second line
   for (let l of lines) {
@@ -102,7 +106,11 @@ function extractProductInfo(text, index) {
   if (!title || title.length < 4) {
     if (brand && code) title = `موديل شتوي راقي ${brand} كود ${code}`;
     else if (brand) title = `كوليكشن شتوي مميز من ${brand}`;
-    else title = `طقم شتوي أنيق كود ${index + 100}`;
+    else title = `طقم شتوي أنيق كود ${code}`;
+  }
+
+  if (code && !title.includes(code)) {
+    title = `[كود ${code}] ${title}`;
   }
 
   if (title.length > 100) {
@@ -181,6 +189,7 @@ function extractProductInfo(text, index) {
   const images = pool[index % pool.length];
 
   return {
+    code,
     title,
     cleanText: clean,
     price,
@@ -323,6 +332,7 @@ async function main() {
     const productRecord = await prisma.product.create({
       data: {
         slug: safeSlug,
+        code: info.code,
         name: sanitizeText(info.title).slice(0, 100),
         nameEn: `Fashion Zone Winter Collection #${pIdx}`.slice(0, 100),
         description: sanitizeText(info.cleanText),

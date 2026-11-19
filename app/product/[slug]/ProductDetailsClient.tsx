@@ -131,9 +131,16 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
         ======================================================== */}
         <div className="space-y-6">
           <div>
-            <span className="text-xs font-bold text-rosegold-500 tracking-wider uppercase">
-              {product.category}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-rosegold-500 tracking-wider uppercase">
+                {product.category}
+              </span>
+              {product.code && (
+                <span className="font-mono text-xs text-rose-700 bg-pink-100 font-bold px-2.5 py-0.5 rounded-full border border-pink-200">
+                  كود الموديل: #{product.code}
+                </span>
+              )}
+            </div>
             <h1 className="text-2xl sm:text-3xl font-black text-stone-900 mt-1 leading-snug">
               {product.name}
             </h1>

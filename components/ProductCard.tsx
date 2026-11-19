@@ -65,7 +65,14 @@ export default function ProductCard({ product }: { product: Product }) {
         <div className="p-4 flex flex-col flex-1 justify-between gap-3">
           <div>
             <div className="flex items-center justify-between text-xs text-rosegold-500 font-semibold mb-1">
-              <span>{product.category}</span>
+              <div className="flex items-center gap-1.5">
+                <span>{product.category}</span>
+                {product.code && (
+                  <span className="font-mono text-[10px] text-rose-700 bg-pink-100/80 px-1.5 py-0.5 rounded font-bold border border-pink-200">
+                    #{product.code}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-1 text-amber-500 font-bold">
                 <Star className="w-3.5 h-3.5 fill-current" />
                 <span>{product.rating}</span>
