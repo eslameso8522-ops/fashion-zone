@@ -40,6 +40,7 @@ import {
   Star,
   Edit2,
   Smartphone,
+  Calculator,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -1016,6 +1017,24 @@ export default function AdminPage() {
     }
   };
 
+  // Delete Order
+  const handleDeleteOrder = async (orderId: string, orderNumber: string) => {
+    if (!confirm(`هل أنتِ متأكدة من حذف الطلب "${orderNumber}" نهائياً من السجل؟`)) return;
+    try {
+      const res = await fetch(`/api/orders?id=${orderId}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (data.success) {
+        setOrders((prev) => prev.filter((o) => o.id !== orderId));
+        setSuccessMessage(`تم حذف الطلب ${orderNumber} بنجاح.`);
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        alert('تعذر حذف الطلب: ' + data.error);
+      }
+    } catch (err: any) {
+      alert('خطأ في الاتصال: ' + err.message);
+    }
+  };
+
   // Create Coupon
   const handleCreateCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1258,6 +1277,14 @@ export default function AdminPage() {
             <Tag className="w-4 h-4" />
             <span>أكواد الخصم ({coupons.length})</span>
           </button>
+
+          <Link
+            href="/admin/accounting"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 shadow-xs"
+          >
+            <Calculator className="w-4 h-4 text-emerald-600" />
+            <span>الحسابات والأرباح 📊</span>
+          </Link>
 
           <button
             onClick={() => setActiveTab('ads_settings')}
@@ -2616,17 +2643,28 @@ export default function AdminPage() {
                             )}
                           </div>
 
-                          <a
-                            href={`https://wa.me/${order.customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                              `مرحباً يا فندم من متجر Fashion Zone بخصوص طلبكِ رقم ${order.orderNumber}`
-                            )}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                            <span>مراسلة العميلة واتساب</span>
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleDeleteOrder(order.id, order.orderNumber)}
+                              className="inline-flex items-center gap-1 text-stone-400 hover:text-red-600 bg-stone-50 hover:bg-red-50 p-2 rounded-xl transition text-xs font-bold border border-stone-200"
+                              title="حذف هذا الطلب نهائياً"
+                            >
+                              <Trash2 className="w-4 h-4 text-rose-500" />
+                              <span className="hidden sm:inline">حذف</span>
+                            </button>
+
+                            <a
+                              href={`https://wa.me/${order.customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                `مرحباً يا فندم من متجر Fashion Zone بخصوص طلبكِ رقم ${order.orderNumber}`
+                              )}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white font-bold px-4 py-2 rounded-xl transition shadow-sm"
+                            >
+                              <MessageCircle className="w-4 h-4" />
+                              <span>مراسلة العميلة واتساب</span>
+                            </a>
+                          </div>
                         </div>
                       </div>
 

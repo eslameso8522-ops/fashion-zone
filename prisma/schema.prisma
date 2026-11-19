@@ -27,6 +27,7 @@ model Product {
   code          String?   // Product model/catalog code e.g. "3606", "5314"
   description   String    @db.Text
   price         Float
+  costPrice     Float?    // Cost / purchase price from factory or supplier
   originalPrice Float?
   categoryId    String
   category      Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -124,4 +125,15 @@ model SiteSettings {
   heroCtaLink         String?  @default("#catalog")
 
   updatedAt           DateTime @updatedAt
+}
+
+model Expense {
+  id        String   @id @default(cuid())
+  title     String   // e.g. "إعلانات فيسبوك ممولة", "مصاريف شحن وتوصيل", "أكياس وبوليصات"
+  category  String   // "MARKETING", "SHIPPING", "PACKAGING", "SALARIES", "INVENTORY", "OTHER"
+  amount    Float
+  date      DateTime @default(now())
+  notes     String?  @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

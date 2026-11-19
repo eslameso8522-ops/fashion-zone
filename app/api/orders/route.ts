@@ -77,3 +77,25 @@ export async function PATCH(request: Request) {
     );
   }
 }
+
+// DELETE /api/orders - حذف طلب محدد أو مسح سجل الطلبات
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (id) {
+      await prisma.order.delete({ where: { id } });
+      return NextResponse.json({ success: true, message: 'تم حذف الطلب بنجاح' });
+    } else {
+      const deleted = await prisma.order.deleteMany({});
+      return NextResponse.json({ success: true, count: deleted.count, message: 'تم مسح سجل الطلبات بنجاح' });
+    }
+  } catch (error: any) {
+    console.error('Error deleting order:', error);
+    return NextResponse.json(
+      { success: false, error: 'فشل في حذف الطلب' },
+      { status: 500 }
+    );
+  }
+}
