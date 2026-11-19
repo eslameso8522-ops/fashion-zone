@@ -1,0 +1,45 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-blush: #f43f5e;
+  --soft-pink: #fff1f2;
+  --rose-gold: #b76e79;
+}
+
+body {
+  font-family: 'Cairo', system-ui, sans-serif;
+  background-color: #fdfbf9;
+  color: #1c1917;
+  overflow-x: hidden;
+}
+
+/* Custom Girly Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #fdfbf9;
+}
+::-webkit-scrollbar-thumb {
+  background: #fda4af;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #fb7185;
+}
+
+/* Soft shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-badge {
+  background: linear-gradient(90deg, #f43f5e 0%, #fb7185 50%, #f43f5e 100%);
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite linear;
+}

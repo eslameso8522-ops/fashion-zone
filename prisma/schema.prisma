@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  slug      String    @unique
+  name      String
+  image     String    @db.Text
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Product {
+  id            String    @id @default(cuid())
+  slug          String    @unique
+  name          String
+  nameEn        String?
+  description   String    @db.Text
+  price         Float
+  originalPrice Float?
+  categoryId    String
+  category      Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  images        Json      // Array of image URLs
+  sizes         Json?     // Array of sizes e.g. ["S", "M", "L"]
+  colors        Json?     // Array of color objects [{ name: "وردي", hex: "#fecdd3" }]
+  isFeatured    Boolean   @default(false)
+  isNewArrival  Boolean   @default(false)
+  inStock       Boolean   @default(true)
+  rating        Float     @default(5.0)
+  reviewsCount  Int       @default(1)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  orderNumber     String   @unique
+  customerName    String
+  customerPhone   String
+  customerAddress String   @db.Text
+  items           Json     // Ordered items snapshot
+  total           Float
+  status          String   @default("PENDING") // PENDING, CONFIRMED, SHIPPED, DELIVERED, CANCELLED
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model AdminUser {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String   @db.Text
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
