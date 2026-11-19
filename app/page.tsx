@@ -125,18 +125,46 @@ export default function HomePage() {
                 <span>تشكيلة فساتين وأناقة حصرية 2026</span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-stone-900 leading-tight">
-                {heroSettings.heroTitle.includes('Fashion Zone') ? (
-                  <>
-                    {heroSettings.heroTitle.split('Fashion Zone')[0]}
-                    <span className="bg-gradient-to-r from-rose-600 via-pink-500 to-rosegold-500 bg-clip-text text-transparent font-serif">
-                      Fashion Zone
-                    </span>
-                    {heroSettings.heroTitle.split('Fashion Zone')[1]}
-                  </>
-                ) : (
-                  heroSettings.heroTitle
-                )}
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-stone-900 leading-[1.25] tracking-tight">
+                {(() => {
+                  const title = heroSettings.heroTitle || 'كوني الأجمل في كل إطلالة مع Fashion Zone';
+
+                  if (title.includes('مع Fashion Zone')) {
+                    const firstPart = title.split('مع Fashion Zone')[0].trim();
+                    return (
+                      <>
+                        <span className="block">{firstPart}</span>
+                        <span className="block mt-1.5 sm:mt-2">
+                          <span className="text-stone-900">مع </span>
+                          <span
+                            dir="ltr"
+                            className="inline-block whitespace-nowrap bg-gradient-to-r from-rose-600 via-pink-500 to-rose-600 bg-clip-text text-transparent font-serif font-black tracking-normal"
+                          >
+                            Fashion Zone
+                          </span>
+                        </span>
+                      </>
+                    );
+                  }
+
+                  if (title.includes('Fashion Zone')) {
+                    const parts = title.split('Fashion Zone');
+                    return (
+                      <>
+                        <span>{parts[0]}</span>
+                        <span
+                          dir="ltr"
+                          className="inline-block whitespace-nowrap bg-gradient-to-r from-rose-600 via-pink-500 to-rose-600 bg-clip-text text-transparent font-serif font-black tracking-normal px-1"
+                        >
+                          Fashion Zone
+                        </span>
+                        <span>{parts[1]}</span>
+                      </>
+                    );
+                  }
+
+                  return title;
+                })()}
               </h1>
 
               <p className="text-stone-600 text-sm sm:text-base md:text-lg max-w-xl leading-relaxed mx-auto lg:mx-0">

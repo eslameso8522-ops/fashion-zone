@@ -135,8 +135,11 @@ export default function Navbar() {
 
               {/* Luxury Mega Dropdown Card with Photos */}
               {categoriesDropdownOpen && (
-                <div className="absolute right-0 top-full pt-2 w-[540px] z-50 animate-fadeIn">
-                  <div className="bg-white/98 backdrop-blur-xl rounded-3xl p-6 shadow-2xl border border-pink-100 ring-1 ring-black/5">
+                <div className="absolute right-0 top-full pt-3 w-[560px] max-w-[92vw] z-[100] animate-fadeIn">
+                  <div 
+                    className="bg-white rounded-3xl p-6 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border-2 border-pink-200 ring-1 ring-black/5"
+                    style={{ backgroundColor: '#ffffff' }}
+                  >
                     
                     <div className="flex items-center justify-between pb-3.5 mb-4 border-b border-pink-100">
                       <div className="flex items-center gap-2">
@@ -162,9 +165,9 @@ export default function Navbar() {
                           key={cat.id}
                           href={`/category/${cat.slug}`}
                           onClick={() => setCategoriesDropdownOpen(false)}
-                          className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-pink-50/70 border border-transparent hover:border-pink-200/80 transition group"
+                          className="flex items-center gap-3 p-2.5 rounded-2xl bg-pink-50/40 hover:bg-pink-100/70 border border-pink-100 hover:border-pink-300 transition group"
                         >
-                          <div className="w-12 h-14 relative rounded-xl overflow-hidden bg-pink-100 flex-shrink-0 border border-pink-200/60 shadow-sm group-hover:scale-105 transition-transform">
+                          <div className="w-12 h-14 relative rounded-xl overflow-hidden bg-pink-100 flex-shrink-0 border border-pink-200/80 shadow-sm group-hover:scale-105 transition-transform">
                             {cat.image ? (
                               <Image
                                 src={cat.image}
@@ -190,14 +193,14 @@ export default function Navbar() {
                     </div>
 
                     {/* Bottom Promo Strip inside Dropdown */}
-                    <div className="mt-4 pt-3.5 border-t border-pink-100/80 flex items-center justify-between bg-gradient-to-r from-pink-50/70 to-rose-50/50 p-3 rounded-2xl">
+                    <div className="mt-4 pt-3.5 border-t border-pink-100 flex items-center justify-between bg-gradient-to-r from-pink-50 to-rose-50 p-3 rounded-2xl border border-pink-200/60">
                       <div className="flex items-center gap-2">
                         <Gift className="w-4 h-4 text-rose-500" />
                         <span className="text-xs text-stone-700 font-semibold">
                           كود خصم إضافي <strong>10%</strong> للطلبات فوق 200 ج.م
                         </span>
                       </div>
-                      <span className="font-mono text-xs font-black text-rose-600 bg-white px-2.5 py-1 rounded-lg border border-pink-200">
+                      <span className="font-mono text-xs font-black text-rose-600 bg-white px-2.5 py-1 rounded-lg border border-pink-200 shadow-xs">
                         GIRL10
                       </span>
                     </div>
