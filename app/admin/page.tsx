@@ -41,6 +41,7 @@ import {
   Edit2,
   Smartphone,
   Calculator,
+  Image as ImageIcon,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -193,6 +194,7 @@ export default function AdminPage() {
   const [originalPrice, setOriginalPrice] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
+  const [newProdImageUrlInput, setNewProdImageUrlInput] = useState('');
   const [selectedSizes, setSelectedSizes] = useState<string[]>(['M', 'L']);
   const [selectedColors, setSelectedColors] = useState<{ name: string; hex: string }[]>([
     { name: 'وردي ناعم', hex: '#fecdd3' },
@@ -288,6 +290,7 @@ export default function AdminPage() {
   const [editProdSizes, setEditProdSizes] = useState<string[]>([]);
   const [editProdCustomSizeInput, setEditProdCustomSizeInput] = useState('');
   const [editProdImages, setEditProdImages] = useState<string[]>([]);
+  const [editProdImageUrlInput, setEditProdImageUrlInput] = useState('');
   const [editProdInStock, setEditProdInStock] = useState(true);
   const [editProdIsNewArrival, setEditProdIsNewArrival] = useState(false);
   const [savingProduct, setSavingProduct] = useState(false);
@@ -407,6 +410,22 @@ export default function AdminPage() {
       setUploadingImage(false);
       e.target.value = '';
     }
+  };
+
+  // Add Image by URL in New Product Form
+  const handleAddNewProductImageUrl = () => {
+    if (!newProdImageUrlInput.trim()) return;
+    setUploadedImages((prev) => [...prev, newProdImageUrlInput.trim()]);
+    setNewProdImageUrlInput('');
+  };
+
+  // Set Main Image in New Product Form
+  const handleSetMainNewProductImage = (index: number) => {
+    setUploadedImages((prev) => {
+      const target = prev[index];
+      const others = prev.filter((_, idx) => idx !== index);
+      return [target, ...others];
+    });
   };
 
   // Upload Category Image to Cloudinary
@@ -1041,8 +1060,62 @@ export default function AdminPage() {
     setEditProdSizes(Array.isArray(prod.sizes) ? [...prod.sizes] : []);
     setEditProdCustomSizeInput('');
     setEditProdImages(Array.isArray(prod.images) ? [...prod.images] : []);
+    setEditProdImageUrlInput('');
     setEditProdInStock(prod.inStock);
     setEditProdIsNewArrival(Boolean(prod.isNewArrival));
+  };
+
+  // Upload Images for Edit Product Modal
+  const handleEditProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingImage(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        const data = await res.json();
+
+        if (data.success && data.url) {
+          setEditProdImages((prev) => [...prev, data.url]);
+        } else {
+          alert('تعذر رفع الصورة: ' + (data.error || 'خطأ غير معروف'));
+        }
+      }
+    } catch (err: any) {
+      alert('خطأ أثناء الرفع: ' + err.message);
+    } finally {
+      setUploadingImage(false);
+      e.target.value = '';
+    }
+  };
+
+  // Add Image by URL in Edit Product Modal
+  const handleAddEditProductImageUrl = () => {
+    if (!editProdImageUrlInput.trim()) return;
+    setEditProdImages((prev) => [...prev, editProdImageUrlInput.trim()]);
+    setEditProdImageUrlInput('');
+  };
+
+  // Remove Image from Edit Product Modal
+  const handleRemoveEditProductImage = (index: number) => {
+    setEditProdImages((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  // Set Main Image (Move to index 0)
+  const handleSetMainEditProductImage = (index: number) => {
+    setEditProdImages((prev) => {
+      const target = prev[index];
+      const others = prev.filter((_, idx) => idx !== index);
+      return [target, ...others];
+    });
   };
 
   // Save Edited Product
@@ -1051,6 +1124,10 @@ export default function AdminPage() {
     if (!editingProduct) return;
     if (!editProdName.trim() || !editProdPrice) {
       alert('يرجى كتابة اسم المنتج وسعره!');
+      return;
+    }
+    if (editProdImages.length === 0) {
+      alert('يرجى إضافة صورة واحدة على الأقل للمنتج!');
       return;
     }
 
@@ -1995,30 +2072,75 @@ export default function AdminPage() {
                     ></textarea>
                   </div>
 
-                  {/* Cloudinary Automated Image Upload */}
-                  <div className="space-y-2">
-                    <label className="block text-xs font-bold text-stone-700">
-                      صور المنتج (رفع تلقائي سحابي مجاني على Cloudinary) *
-                    </label>
-                    <div className="flex flex-wrap gap-3">
+                  {/* Cloudinary Automated Image Upload & Management */}
+                  <div className="bg-pink-50/50 p-4 rounded-2xl border border-pink-200 space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <label className="block text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                          <ImageIcon className="w-4 h-4 text-rose-500" />
+                          <span>صور المنتج (رفع تلقائي سحابي مجاني):</span>
+                          <span className="text-rose-600 font-mono">({uploadedImages.length} صور)</span>
+                        </label>
+                        <p className="text-[11px] text-stone-500">
+                          الصورة الأولى (المميزة بـ ⭐) هي صورة الغلاف الرئيسية في المتجر
+                        </p>
+                      </div>
+                      {uploadedImages.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setUploadedImages([])}
+                          className="text-[10px] text-red-500 hover:underline font-bold"
+                        >
+                          حذف كل الصور
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-3 items-center min-h-[110px] p-2.5 bg-white rounded-xl border border-pink-100">
                       {uploadedImages.map((imgUrl, i) => (
-                        <div key={i} className="relative w-20 h-24 rounded-xl overflow-hidden border border-pink-200 group">
+                        <div
+                          key={i}
+                          className={`w-24 h-28 relative rounded-xl overflow-hidden border-2 group transition ${
+                            i === 0
+                              ? 'border-rose-500 shadow-sm ring-2 ring-rose-200'
+                              : 'border-stone-200 hover:border-pink-300'
+                          }`}
+                        >
                           <Image src={imgUrl} alt="Uploaded" fill className="object-cover" />
+
+                          {/* Badge for main image */}
+                          {i === 0 ? (
+                            <span className="absolute top-1 right-1 bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5">
+                              ⭐ الرئيسية
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleSetMainNewProductImage(i)}
+                              className="absolute bottom-1 right-1 left-1 bg-stone-900/85 hover:bg-rose-600 text-white text-[9px] font-bold py-1 rounded opacity-0 group-hover:opacity-100 transition text-center shadow-xs"
+                              title="تعيين كصورة رئيسية للمنتج"
+                            >
+                              جعلها رئيسية ⭐
+                            </button>
+                          )}
+
                           <button
                             type="button"
                             onClick={() => setUploadedImages((prev) => prev.filter((u) => u !== imgUrl))}
-                            className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-90 hover:opacity-100"
+                            className="absolute top-1 left-1 bg-red-600 hover:bg-red-700 text-white p-1 rounded-full shadow-sm transition"
+                            title="حذف هذه الصورة"
                           >
                             <X className="w-3 h-3" />
                           </button>
                         </div>
                       ))}
 
-                      <label className="w-20 h-24 rounded-xl border-2 border-dashed border-pink-300 hover:border-rose-500 bg-pink-50/50 hover:bg-pink-50 flex flex-col items-center justify-center cursor-pointer transition">
-                        <Upload className="w-5 h-5 text-rose-500 mb-1" />
-                        <span className="text-[10px] font-bold text-rose-600">
-                          {uploadingImage ? 'جاري الرفع...' : 'رفع صورة'}
+                      <label className="w-24 h-28 rounded-xl border-2 border-dashed border-pink-300 hover:border-rose-500 bg-pink-50/50 hover:bg-pink-100/70 flex flex-col items-center justify-center cursor-pointer transition p-2 text-center group">
+                        <Upload className="w-6 h-6 text-rose-500 mb-1 group-hover:scale-110 transition-transform" />
+                        <span className="text-[10px] font-bold text-rose-600 leading-tight">
+                          {uploadingImage ? 'جاري الرفع... ⏳' : '+ رفع صور'}
                         </span>
+                        <span className="text-[9px] text-stone-400 mt-0.5">من جهازك</span>
                         <input
                           type="file"
                           accept="image/*"
@@ -2028,6 +2150,30 @@ export default function AdminPage() {
                           className="hidden"
                         />
                       </label>
+                    </div>
+
+                    {/* Direct URL input option */}
+                    <div className="flex gap-2 pt-1 border-t border-pink-100">
+                      <input
+                        type="url"
+                        placeholder="أو الصقي رابط صورة مباشرة من الإنترنت (https://...)"
+                        value={newProdImageUrlInput}
+                        onChange={(e) => setNewProdImageUrlInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddNewProductImageUrl();
+                          }
+                        }}
+                        className="flex-1 text-xs px-3 py-1.5 rounded-xl border border-pink-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-400 text-left font-mono"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddNewProductImageUrl}
+                        className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-pink-200 text-xs font-bold px-3 py-1.5 rounded-xl transition whitespace-nowrap"
+                      >
+                        + إضافة الرابط
+                      </button>
                     </div>
                   </div>
 
@@ -2519,6 +2665,114 @@ export default function AdminPage() {
                         onChange={(e) => setEditProdDescription(e.target.value)}
                         className="w-full px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
                       />
+                    </div>
+
+                    {/* EDIT PRODUCT IMAGES MANAGER */}
+                    <div className="bg-pink-50/50 p-4 rounded-2xl border border-pink-200 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <label className="block text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                            <ImageIcon className="w-4 h-4 text-rose-500" />
+                            <span>صور المنتج الحالية والجديدة:</span>
+                            <span className="text-rose-600 font-mono">({editProdImages.length} صور)</span>
+                          </label>
+                          <p className="text-[11px] text-stone-500">
+                            الصورة الأولى (المميزة بـ ⭐) هي صورة الغلاف الرئيسية في المتجر. يمكنكِ تعيين أي صورة كرئيسية أو حذفها أو إضافة صور جديدة.
+                          </p>
+                        </div>
+                        {editProdImages.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setEditProdImages([])}
+                            className="text-[10px] text-red-500 hover:underline font-bold"
+                          >
+                            حذف كل الصور
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Images Grid */}
+                      <div className="flex flex-wrap gap-3 items-center min-h-[110px] p-2.5 bg-white rounded-xl border border-pink-100">
+                        {editProdImages.map((img, idx) => (
+                          <div
+                            key={idx}
+                            className={`w-24 h-28 relative rounded-xl overflow-hidden border-2 group transition ${
+                              idx === 0
+                                ? 'border-rose-500 shadow-sm ring-2 ring-rose-200'
+                                : 'border-stone-200 hover:border-pink-300'
+                            }`}
+                          >
+                            <Image src={img} alt="" fill className="object-cover" />
+
+                            {/* Badge for main image */}
+                            {idx === 0 ? (
+                              <span className="absolute top-1 right-1 bg-rose-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md shadow-xs flex items-center gap-0.5">
+                                ⭐ الرئيسية
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleSetMainEditProductImage(idx)}
+                                className="absolute bottom-1 right-1 left-1 bg-stone-900/85 hover:bg-rose-600 text-white text-[9px] font-bold py-1 rounded opacity-0 group-hover:opacity-100 transition text-center shadow-xs"
+                                title="تعيين كصورة رئيسية للمنتج"
+                              >
+                                جعلها رئيسية ⭐
+                              </button>
+                            )}
+
+                            {/* Delete image button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveEditProductImage(idx)}
+                              className="absolute top-1 left-1 bg-red-600 hover:bg-red-700 text-white p-1 rounded-full shadow-sm transition"
+                              title="حذف هذه الصورة"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+
+                        {/* Upload from Device Button */}
+                        <label className="w-24 h-28 rounded-xl border-2 border-dashed border-pink-300 hover:border-rose-500 bg-pink-50/50 hover:bg-pink-100/70 flex flex-col items-center justify-center cursor-pointer transition p-2 text-center group">
+                          <Upload className="w-6 h-6 text-rose-500 mb-1 group-hover:scale-110 transition-transform" />
+                          <span className="text-[10px] font-bold text-rose-600 leading-tight">
+                            {uploadingImage ? 'جاري الرفع... ⏳' : '+ رفع صور جديدة'}
+                          </span>
+                          <span className="text-[9px] text-stone-400 mt-0.5">من جهازك</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={handleEditProductImageUpload}
+                            disabled={uploadingImage}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+
+                      {/* Direct URL input option */}
+                      <div className="flex gap-2 pt-1 border-t border-pink-100">
+                        <input
+                          type="url"
+                          placeholder="أو الصقي رابط صورة مباشرة من الإنترنت (https://...)"
+                          value={editProdImageUrlInput}
+                          onChange={(e) => setEditProdImageUrlInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddEditProductImageUrl();
+                            }
+                          }}
+                          className="flex-1 text-xs px-3 py-1.5 rounded-xl border border-pink-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-400 text-left font-mono"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddEditProductImageUrl}
+                          className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-pink-200 text-xs font-bold px-3 py-1.5 rounded-xl transition whitespace-nowrap"
+                        >
+                          + إضافة الرابط
+                        </button>
+                      </div>
                     </div>
 
                     {/* DYNAMIC CUSTOM SIZES MANAGER */}
