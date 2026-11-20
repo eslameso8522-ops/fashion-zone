@@ -41,9 +41,11 @@ import {
   Edit2,
   Smartphone,
   Calculator,
+  Palette,
   Image as ImageIcon,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { applyWatermarkToFile } from '@/lib/watermark';
 
 interface CategoryItem {
   id: string;
@@ -203,9 +205,11 @@ export default function AdminPage() {
   const [uploadedImages, setUploadedImages] = useState<string[]>([]);
   const [newProdImageUrlInput, setNewProdImageUrlInput] = useState('');
   const [selectedSizes, setSelectedSizes] = useState<string[]>(['M', 'L']);
-  const [selectedColors, setSelectedColors] = useState<{ name: string; hex: string }[]>([
-    { name: 'وردي ناعم', hex: '#fecdd3' },
-  ]);
+  const [selectedColors, setSelectedColors] = useState<{ name: string; hex: string }[]>([]);
+  const [customColorName, setCustomColorName] = useState('');
+  const [customColorHex, setCustomColorHex] = useState('#e11d48');
+  const [autoWatermark, setAutoWatermark] = useState(true);
+  const [watermarkPosition, setWatermarkPosition] = useState<'bottom-right' | 'bottom-left' | 'center'>('bottom-right');
   const [isFeatured, setIsFeatured] = useState(true);
   const [isNewArrival, setIsNewArrival] = useState(true);
   const [uploadingImage, setUploadingImage] = useState(false);
@@ -285,6 +289,32 @@ export default function AdminPage() {
   const weightBasedSizes = ['يلبس 60-80 ك', 'يلبس 80-100 ك', 'يلبس 100-120 ك'];
   const kidsAndNumberSizes = ['مقاس 1', 'مقاس 2', 'مقاس 3', 'سنتين', '4 سنين', '6 سنين', '8 سنين', '10 سنين', '12 سنة', '14 سنة', '16 سنة'];
 
+  // Fashion Boutique Colors Presets
+  const PRESET_COLORS: { name: string; hex: string }[] = [
+    { name: 'أسود', hex: '#18181b' },
+    { name: 'أبيض', hex: '#ffffff' },
+    { name: 'بيج', hex: '#f5f5dc' },
+    { name: 'أوف وايت', hex: '#fcfbf7' },
+    { name: 'كحلي', hex: '#1e3a8a' },
+    { name: 'رمادي', hex: '#71717a' },
+    { name: 'كشمير', hex: '#e0a899' },
+    { name: 'وردي', hex: '#f472b6' },
+    { name: 'روز', hex: '#fb7185' },
+    { name: 'نبيتي', hex: '#881337' },
+    { name: 'أحمر', hex: '#e11d48' },
+    { name: 'زيتي', hex: '#3f6212' },
+    { name: 'أخضر', hex: '#15803d' },
+    { name: 'موف', hex: '#9333ea' },
+    { name: 'لافندر', hex: '#c084fc' },
+    { name: 'سيمون', hex: '#fca5a5' },
+    { name: 'جملي', hex: '#c19a6b' },
+    { name: 'هافان', hex: '#964B00' },
+    { name: 'بترولي', hex: '#0e7490' },
+    { name: 'مستردة', hex: '#eab308' },
+    { name: 'تايجر', hex: '#b45309' },
+    { name: 'بني', hex: '#78350f' },
+  ];
+
   // Product Edit states
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
   const [editProdName, setEditProdName] = useState('');
@@ -297,6 +327,9 @@ export default function AdminPage() {
   const [editProdDescription, setEditProdDescription] = useState('');
   const [editProdSizes, setEditProdSizes] = useState<string[]>([]);
   const [editProdCustomSizeInput, setEditProdCustomSizeInput] = useState('');
+  const [editProdColors, setEditProdColors] = useState<{ name: string; hex: string }[]>([]);
+  const [editCustomColorName, setEditCustomColorName] = useState('');
+  const [editCustomColorHex, setEditCustomColorHex] = useState('#e11d48');
   const [editProdImages, setEditProdImages] = useState<string[]>([]);
   const [editProdImageUrlInput, setEditProdImageUrlInput] = useState('');
   const [editProdInStock, setEditProdInStock] = useState(true);
@@ -388,7 +421,7 @@ export default function AdminPage() {
     router.replace('/admin/login');
   };
 
-  // Upload Product Image to Cloudinary
+  // Upload Product Image to Cloudinary (with optional auto-watermark)
   const handleProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -396,7 +429,16 @@ export default function AdminPage() {
     setUploadingImage(true);
     try {
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+        let file = files[i];
+
+        if (autoWatermark) {
+          try {
+            file = await applyWatermarkToFile(file, { position: watermarkPosition });
+          } catch (wErr) {
+            console.error('Watermark error:', wErr);
+          }
+        }
+
         const formData = new FormData();
         formData.append('file', file);
 
@@ -832,10 +874,29 @@ export default function AdminPage() {
       'موف': '#9333ea',
       'بستاج': '#a7f3d0',
       'لافندر': '#c084fc',
+      'هافان': '#964B00',
+      'جملي': '#c19a6b',
+      'بني': '#78350f',
+      'أوف وايت': '#fcfbf7',
+      'مستردة': '#eab308',
+      'بترولي': '#0e7490',
     };
     const detectedColors: { name: string; hex: string }[] = [];
     Object.keys(colorDictionary).forEach((col) => {
-      if (text.includes(col)) {
+      if (col === 'بيج') {
+        const hasColorWord = /(?:لون|اللون|ألوان|باللون|الوان)\s*[:=]?\s*بيج/i.test(text);
+        const textWithoutPyjamas = text.replace(/بيجام[ةهات]/gi, '');
+        const isStandalone = /(?:^|[^\w\u0600-\u06FF])بيج(?=[^\w\u0600-\u06FF]|$)/i.test(textWithoutPyjamas);
+        if (hasColorWord || isStandalone) {
+          if (!detectedColors.some((c) => c.name === col)) {
+            detectedColors.push({ name: col, hex: colorDictionary[col] });
+          }
+        }
+        return;
+      }
+
+      const colRegex = new RegExp(`(?:^|[^\\w\\u0600-\\u06FF])${col}(?=[^\\w\\u0600-\\u06FF]|$)`, 'i');
+      if (colRegex.test(text)) {
         if (!detectedColors.some((c) => c.name === col)) {
           detectedColors.push({ name: col, hex: colorDictionary[col] });
         }
@@ -1095,6 +1156,96 @@ export default function AdminPage() {
     }
   };
 
+  // Color Handlers (Supports custom colors, hex picker, and presets)
+  const handleToggleColor = (col: { name: string; hex: string }, isEdit = false) => {
+    if (isEdit) {
+      setEditProdColors((prev) => {
+        const exists = prev.some((c) => c.name.toLowerCase() === col.name.toLowerCase());
+        return exists ? prev.filter((c) => c.name.toLowerCase() !== col.name.toLowerCase()) : [...prev, col];
+      });
+    } else {
+      setSelectedColors((prev) => {
+        const exists = prev.some((c) => c.name.toLowerCase() === col.name.toLowerCase());
+        return exists ? prev.filter((c) => c.name.toLowerCase() !== col.name.toLowerCase()) : [...prev, col];
+      });
+    }
+  };
+
+  const handleRemoveColor = (colorName: string, isEdit = false) => {
+    if (isEdit) {
+      setEditProdColors((prev) => prev.filter((c) => c.name.toLowerCase() !== colorName.toLowerCase()));
+    } else {
+      setSelectedColors((prev) => prev.filter((c) => c.name.toLowerCase() !== colorName.toLowerCase()));
+    }
+  };
+
+  const handleClearColors = (isEdit = false) => {
+    if (isEdit) {
+      setEditProdColors([]);
+    } else {
+      setSelectedColors([]);
+    }
+  };
+
+  const handleAddCustomColor = (isEdit = false) => {
+    const nameToAdd = isEdit ? editCustomColorName.trim() : customColorName.trim();
+    const hexToAdd = isEdit ? editCustomColorHex : customColorHex;
+    if (!nameToAdd) return;
+
+    const newColorObj = { name: nameToAdd, hex: hexToAdd || '#e11d48' };
+
+    if (isEdit) {
+      setEditProdColors((prev) => {
+        if (prev.some((c) => c.name.toLowerCase() === nameToAdd.toLowerCase())) return prev;
+        return [...prev, newColorObj];
+      });
+      setEditCustomColorName('');
+    } else {
+      setSelectedColors((prev) => {
+        if (prev.some((c) => c.name.toLowerCase() === nameToAdd.toLowerCase())) return prev;
+        return [...prev, newColorObj];
+      });
+      setCustomColorName('');
+    }
+  };
+
+  // Apply watermark to an existing image on demand
+  const handleApplyWatermarkToExistingImage = async (imgUrl: string, index: number, isEdit = false) => {
+    try {
+      setUploadingImage(true);
+      const res = await fetch(imgUrl);
+      const blob = await res.blob();
+      const file = new File([blob], `watermarked-${Date.now()}.jpg`, { type: blob.type || 'image/jpeg' });
+      const watermarkedFile = await applyWatermarkToFile(file, { position: watermarkPosition });
+      const formData = new FormData();
+      formData.append('file', watermarkedFile);
+      const uploadRes = await fetch('/api/upload', { method: 'POST', body: formData });
+      const data = await uploadRes.json();
+      if (data.success && data.url) {
+        if (isEdit) {
+          setEditProdImages((prev) => {
+            const next = [...prev];
+            next[index] = data.url;
+            return next;
+          });
+        } else {
+          setUploadedImages((prev) => {
+            const next = [...prev];
+            next[index] = data.url;
+            return next;
+          });
+        }
+        setSuccessMessage('تم وضع لوجو Fashion Zone على الصورة بنجاح! ✨');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } catch (e: any) {
+      console.error('Error applying watermark to existing image:', e);
+      alert('تعذر تطبيق اللوجو على هذه الصورة تلقائياً: ' + e.message);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   // Start Editing Product
   const handleStartEditProduct = (prod: ProductItem) => {
     setEditingProduct(prod);
@@ -1108,13 +1259,15 @@ export default function AdminPage() {
     setEditProdDescription(prod.description || '');
     setEditProdSizes(Array.isArray(prod.sizes) ? [...prod.sizes] : []);
     setEditProdCustomSizeInput('');
+    setEditProdColors(Array.isArray(prod.colors) ? [...(prod.colors as any)] : []);
+    setEditCustomColorName('');
     setEditProdImages(Array.isArray(prod.images) ? [...prod.images] : []);
     setEditProdImageUrlInput('');
     setEditProdInStock(prod.inStock);
     setEditProdIsNewArrival(Boolean(prod.isNewArrival));
   };
 
-  // Upload Images for Edit Product Modal
+  // Upload Images for Edit Product Modal (with optional auto-watermark)
   const handleEditProductImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -1122,7 +1275,16 @@ export default function AdminPage() {
     setUploadingImage(true);
     try {
       for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+        let file = files[i];
+
+        if (autoWatermark) {
+          try {
+            file = await applyWatermarkToFile(file, { position: watermarkPosition });
+          } catch (wErr) {
+            console.error('Watermark error:', wErr);
+          }
+        }
+
         const formData = new FormData();
         formData.append('file', file);
 
@@ -1195,6 +1357,7 @@ export default function AdminPage() {
           categoryId: editProdCategoryId || undefined,
           description: editProdDescription.trim(),
           sizes: editProdSizes,
+          colors: editProdColors,
           images: editProdImages,
           inStock: editProdInStock,
           isNewArrival: editProdIsNewArrival,
@@ -2172,6 +2335,33 @@ export default function AdminPage() {
                       )}
                     </div>
 
+                    {/* Watermark & Brand Logo Bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white rounded-xl border border-pink-200 text-xs shadow-2xs">
+                      <label className="flex items-center gap-2 cursor-pointer font-bold text-stone-800">
+                        <input
+                          type="checkbox"
+                          checked={autoWatermark}
+                          onChange={(e) => setAutoWatermark(e.target.checked)}
+                          className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-500 accent-rose-600"
+                        />
+                        <span>✨ وضع لوجو وعلامة مائية Fashion Zone تلقائياً على الصور</span>
+                      </label>
+                      {autoWatermark && (
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span className="text-stone-500 font-medium">موضع اللوجو:</span>
+                          <select
+                            value={watermarkPosition}
+                            onChange={(e) => setWatermarkPosition(e.target.value as any)}
+                            className="bg-pink-50/50 px-2.5 py-1 rounded-lg border border-pink-200 text-stone-800 font-bold focus:outline-none"
+                          >
+                            <option value="bottom-right">أسفل اليمين</option>
+                            <option value="bottom-left">أسفل اليسار</option>
+                            <option value="center">في المنتصف</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="flex flex-wrap gap-3 items-center min-h-[110px] p-2.5 bg-white rounded-xl border border-pink-100">
                       {uploadedImages.map((imgUrl, i) => (
                         <div
@@ -2199,6 +2389,16 @@ export default function AdminPage() {
                               جعلها رئيسية ⭐
                             </button>
                           )}
+
+                          {/* Apply Watermark Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleApplyWatermarkToExistingImage(imgUrl, i, false)}
+                            className="absolute bottom-1 left-1 bg-stone-900/85 hover:bg-rose-600 text-white text-[8px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition z-10 shadow-xs"
+                            title="تطبيق لوجو وعلامة Fashion Zone على هذه الصورة"
+                          >
+                            ✨ لوجو
+                          </button>
 
                           <button
                             type="button"
@@ -2390,6 +2590,123 @@ export default function AdminPage() {
                               }`}
                             >
                               {size} {isSel && '✓'}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ========================================================
+                      PRODUCT COLORS MANAGER (إدارة وتحديد ألوان الموديل)
+                  ======================================================== */}
+                  <div className="space-y-3 p-4 rounded-2xl bg-pink-50/40 border border-pink-200">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label className="block text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                        <Palette className="w-4 h-4 text-rose-500" />
+                        <span>🎨 ألوان الموديل المتاحة:</span>
+                        <span className="text-rose-600 font-mono">
+                          {selectedColors.length > 0 ? `(${selectedColors.length} لون)` : '(بدون خيارات ألوان / لون موحد)'}
+                        </span>
+                      </label>
+                      {selectedColors.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => handleClearColors(false)}
+                          className="text-[10px] text-rose-600 hover:underline font-bold"
+                        >
+                          مسح جميع الألوان (جعله بدون ألوان)
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Currently Selected Colors Tags with (x) delete */}
+                    <div className="flex flex-wrap gap-2 min-h-[36px] p-2 bg-white rounded-xl border border-pink-200">
+                      {selectedColors.length === 0 ? (
+                        <span className="text-xs text-stone-400 italic">
+                          لم يتم تحديد أي لون (سيظهر المنتج بدون خيار ألوان للعميلة). يمكنك اختيار ألوان من الأسفل أو إضافة لون جديد.
+                        </span>
+                      ) : (
+                        selectedColors.map((col) => (
+                          <span
+                            key={col.name}
+                            className="bg-white text-stone-800 border border-pink-200 px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-2 shadow-2xs animate-fadeIn"
+                          >
+                            <span
+                              className="w-3.5 h-3.5 rounded-full border border-stone-300 shadow-2xs"
+                              style={{ backgroundColor: col.hex }}
+                            />
+                            <span>{col.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveColor(col.name, false)}
+                              className="text-stone-400 hover:text-red-500 rounded-full"
+                              title="حذف هذا اللون"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Custom Color Input & Color Picker */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="flex items-center gap-1 bg-white px-2 py-1.5 rounded-xl border border-pink-200">
+                        <input
+                          type="color"
+                          value={customColorHex}
+                          onChange={(e) => setCustomColorHex(e.target.value)}
+                          className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent"
+                          title="اختيار درجة اللون"
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        placeholder="اكتبي اسم أي لون جديد (مثال: بترولي / تايجر / كافيه / أوف وايت)..."
+                        value={customColorName}
+                        onChange={(e) => setCustomColorName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCustomColor(false);
+                          }
+                        }}
+                        className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddCustomColor(false)}
+                        className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-xs flex items-center gap-1 whitespace-nowrap"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>إضافة اللون</span>
+                      </button>
+                    </div>
+
+                    {/* Quick Preset Colors Palette */}
+                    <div className="space-y-1.5 pt-2 border-t border-pink-100/70">
+                      <span className="text-[11px] font-bold text-stone-600 block">اختيار سريع من ألوان الموضة والأزياء:</span>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {PRESET_COLORS.map((col) => {
+                          const isSel = selectedColors.some((c) => c.name.toLowerCase() === col.name.toLowerCase());
+                          return (
+                            <button
+                              type="button"
+                              key={col.name}
+                              onClick={() => handleToggleColor(col, false)}
+                              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition ${
+                                isSel
+                                  ? 'bg-rose-500 text-white border-rose-500 shadow-2xs'
+                                  : 'bg-white text-stone-700 border-pink-200 hover:border-rose-400'
+                              }`}
+                            >
+                              <span
+                                className="w-3 h-3 rounded-full border border-stone-300"
+                                style={{ backgroundColor: col.hex }}
+                              />
+                              <span>{col.name}</span>
+                              {isSel && <span>✓</span>}
                             </button>
                           );
                         })}
@@ -2995,6 +3312,128 @@ export default function AdminPage() {
                                 }`}
                               >
                                 {size} {isSel && '✓'}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* ========================================================
+                        EDIT PRODUCT COLORS MANAGER (إدارة ألوان المنتج)
+                    ======================================================== */}
+                    <div className="bg-pink-50/50 p-4 rounded-2xl border border-pink-200 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <label className="block text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                            <Palette className="w-4 h-4 text-rose-500" />
+                            <span>🎨 ألوان المنتج المتاحة:</span>
+                            <span className="text-rose-600 font-mono">
+                              {editProdColors.length > 0 ? `(${editProdColors.length} لون)` : '(بدون خيارات ألوان / لون موحد)'}
+                            </span>
+                          </label>
+                          <p className="text-[11px] text-stone-500">
+                            أضيفي ألوان، أو اضغطي (X) لحذف أي لون، أو اضغطي مسح لإلغاء خيار الألوان تماماً
+                          </p>
+                        </div>
+                        {editProdColors.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleClearColors(true)}
+                            className="text-[10px] text-red-500 hover:underline font-bold"
+                          >
+                            مسح جميع الألوان (جعله بدون ألوان)
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Selected Color Badges */}
+                      <div className="flex flex-wrap gap-1.5 min-h-[36px] p-2 bg-white rounded-xl border border-pink-100">
+                        {editProdColors.length === 0 ? (
+                          <span className="text-stone-400 text-xs italic">
+                            الموديل معروض بدون ألوان (لون موحد). يمكنك اختيار ألوان من الأسفل أو إضافة لون مخصص.
+                          </span>
+                        ) : (
+                          editProdColors.map((col) => (
+                            <span
+                              key={col.name}
+                              className="inline-flex items-center gap-2 bg-white text-stone-800 font-bold text-xs px-3 py-1 rounded-xl border border-pink-200 shadow-2xs animate-fadeIn"
+                            >
+                              <span
+                                className="w-3.5 h-3.5 rounded-full border border-stone-300 shadow-2xs"
+                                style={{ backgroundColor: col.hex }}
+                              />
+                              <span>{col.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveColor(col.name, true)}
+                                className="text-stone-400 hover:text-red-500 rounded-full"
+                                title="إزالة هذا اللون"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </span>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Custom Color Input */}
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 bg-white px-2 py-1.5 rounded-xl border border-pink-200">
+                          <input
+                            type="color"
+                            value={editCustomColorHex}
+                            onChange={(e) => setEditCustomColorHex(e.target.value)}
+                            className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent"
+                            title="اختيار درجة اللون"
+                          />
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="اكتبي أي لون جديد (مثال: بترولي / كافيه / تايجر)..."
+                          value={editCustomColorName}
+                          onChange={(e) => setEditCustomColorName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddCustomColor(true);
+                            }
+                          }}
+                          className="flex-1 text-xs px-3.5 py-2 rounded-xl border border-pink-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAddCustomColor(true)}
+                          className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs flex items-center gap-1 whitespace-nowrap"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>إضافة</span>
+                        </button>
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div className="space-y-1.5 pt-2 border-t border-pink-100">
+                        <span className="text-[11px] font-bold text-stone-600 block">اختيار سريع:</span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {PRESET_COLORS.map((col) => {
+                            const isSel = editProdColors.some((c) => c.name.toLowerCase() === col.name.toLowerCase());
+                            return (
+                              <button
+                                type="button"
+                                key={col.name}
+                                onClick={() => handleToggleColor(col, true)}
+                                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold border transition ${
+                                  isSel
+                                    ? 'bg-rose-500 text-white border-rose-500 shadow-2xs'
+                                    : 'bg-white text-stone-700 border-pink-200 hover:border-rose-400'
+                                }`}
+                              >
+                                <span
+                                  className="w-3 h-3 rounded-full border border-stone-300"
+                                  style={{ backgroundColor: col.hex }}
+                                />
+                                <span>{col.name}</span>
+                                {isSel && <span>✓</span>}
                               </button>
                             );
                           })}

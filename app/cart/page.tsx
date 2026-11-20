@@ -120,9 +120,9 @@ export default function CartPage() {
     const itemsSummary = cart
       .map(
         (item, index) =>
-          `${index + 1}. *${item.product.name}* ${(item.product as any).code ? `[كود: ${(item.product as any).code}]` : ''}\n   - الكمية: ${item.quantity}\n   - المقاس: ${
-            item.selectedSize || 'افتراضي'
-          }\n   - اللون: ${item.selectedColor || 'افتراضي'}\n   - السعر: ${
+          `${index + 1}. *${item.product.name}* ${(item.product as any).code ? `[كود: ${(item.product as any).code}]` : ''}\n   - الكمية: ${item.quantity}${
+            item.selectedSize ? `\n   - المقاس: ${item.selectedSize}` : ''
+          }${item.selectedColor ? `\n   - اللون: ${item.selectedColor}` : ''}\n   - السعر: ${
             item.product.price * item.quantity
           } جنيه`
       )
