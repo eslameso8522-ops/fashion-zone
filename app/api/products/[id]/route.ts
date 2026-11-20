@@ -32,6 +32,22 @@ export async function PATCH(
     if (body.name !== undefined) dataToUpdate.name = body.name;
     if (body.nameEn !== undefined) dataToUpdate.nameEn = body.nameEn;
     if (body.code !== undefined) dataToUpdate.code = body.code;
+    if (body.slug && typeof body.slug === 'string' && body.slug.trim()) {
+      const cleanSlug = body.slug
+        .toLowerCase()
+        .trim()
+        .replace(/[\s_]+/g, '-')
+        .replace(/[^\w\u0600-\u06FF-]/g, '')
+        .replace(/^-+|-+$/g, '');
+      if (cleanSlug) {
+        const existing = await prisma.product.findFirst({
+          where: { slug: cleanSlug, NOT: { id: params.id } },
+        });
+        if (!existing) {
+          dataToUpdate.slug = cleanSlug;
+        }
+      }
+    }
     if (body.price !== undefined) dataToUpdate.price = parseFloat(body.price);
     if (body.originalPrice !== undefined) {
       dataToUpdate.originalPrice = body.originalPrice !== null && body.originalPrice !== '' ? parseFloat(body.originalPrice) : null;

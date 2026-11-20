@@ -115,6 +115,9 @@ export async function POST(request: Request) {
       heroCouponTitle,
       heroCouponCode,
       heroCouponDiscount,
+      heroCouponEnabled,
+      heroBadgeEnabled,
+      heroProductId,
       heroCtaText,
       heroCtaLink,
     } = body;
@@ -148,6 +151,9 @@ export async function POST(request: Request) {
     if (heroCouponTitle !== undefined) dataPayload.heroCouponTitle = heroCouponTitle;
     if (heroCouponCode !== undefined) dataPayload.heroCouponCode = heroCouponCode;
     if (heroCouponDiscount !== undefined) dataPayload.heroCouponDiscount = heroCouponDiscount;
+    if (heroCouponEnabled !== undefined) dataPayload.heroCouponEnabled = Boolean(heroCouponEnabled);
+    if (heroBadgeEnabled !== undefined) dataPayload.heroBadgeEnabled = Boolean(heroBadgeEnabled);
+    if (heroProductId !== undefined) dataPayload.heroProductId = heroProductId || null;
     if (heroCtaText !== undefined) dataPayload.heroCtaText = heroCtaText;
     if (heroCtaLink !== undefined) dataPayload.heroCtaLink = heroCtaLink;
 
@@ -171,11 +177,14 @@ export async function POST(request: Request) {
         heroTitle: heroTitle || 'كوني الأجمل في كل إطلالة مع Fashion Zone',
         heroSubtitle: heroSubtitle || 'اكتشفي تشكيلة راقية ومختارة بعناية...',
         heroImage: heroImage || 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1000&auto=format&fit=crop&q=80',
-        heroBadgeText: heroBadgeText || 'أعلى تقييم ⭐ 4.9',
-        heroBadgeSubtext: heroBadgeSubtext || 'أزياء صيف 2026',
-        heroCouponTitle: heroCouponTitle || 'كود الخصم الفوري',
-        heroCouponCode: heroCouponCode || 'GIRL10',
-        heroCouponDiscount: heroCouponDiscount || 'خصم 10%',
+        heroBadgeText: heroBadgeText || '',
+        heroBadgeSubtext: heroBadgeSubtext || '',
+        heroCouponTitle: heroCouponTitle || '',
+        heroCouponCode: heroCouponCode || '',
+        heroCouponDiscount: heroCouponDiscount || '',
+        heroCouponEnabled: heroCouponEnabled !== undefined ? Boolean(heroCouponEnabled) : true,
+        heroBadgeEnabled: heroBadgeEnabled !== undefined ? Boolean(heroBadgeEnabled) : true,
+        heroProductId: heroProductId || null,
         heroCtaText: heroCtaText || 'تسوقي الآن / Shop Now',
         heroCtaLink: heroCtaLink || '#catalog',
       },

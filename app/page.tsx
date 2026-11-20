@@ -18,9 +18,11 @@ export default function HomePage() {
     heroImage: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1000&auto=format&fit=crop&q=80',
     heroBadgeText: 'أعلى تقييم ⭐ 4.9',
     heroBadgeSubtext: 'أزياء صيف 2026',
-    heroCouponTitle: 'كود الخصم الفوري',
-    heroCouponCode: 'GIRL10',
-    heroCouponDiscount: 'خصم 10%',
+    heroCouponTitle: '',
+    heroCouponCode: '',
+    heroCouponDiscount: '',
+    heroCouponEnabled: true,
+    heroBadgeEnabled: true,
     heroCtaText: 'تسوقي الآن / Shop Now',
     heroCtaLink: '#catalog',
     heroBannerTitle: 'خصم يصل إلى 35% على تشكيلة فساتين السهرة الفاخرة!',
@@ -45,9 +47,11 @@ export default function HomePage() {
             heroImage: data.settings.heroImage || prev.heroImage,
             heroBadgeText: data.settings.heroBadgeText || prev.heroBadgeText,
             heroBadgeSubtext: data.settings.heroBadgeSubtext || prev.heroBadgeSubtext,
-            heroCouponTitle: data.settings.heroCouponTitle || prev.heroCouponTitle,
-            heroCouponCode: data.settings.heroCouponCode || prev.heroCouponCode,
-            heroCouponDiscount: data.settings.heroCouponDiscount || prev.heroCouponDiscount,
+            heroCouponTitle: data.settings.heroCouponTitle !== undefined ? data.settings.heroCouponTitle : prev.heroCouponTitle,
+            heroCouponCode: data.settings.heroCouponCode !== undefined ? data.settings.heroCouponCode : prev.heroCouponCode,
+            heroCouponDiscount: data.settings.heroCouponDiscount !== undefined ? data.settings.heroCouponDiscount : prev.heroCouponDiscount,
+            heroCouponEnabled: data.settings.heroCouponEnabled !== undefined ? data.settings.heroCouponEnabled : prev.heroCouponEnabled,
+            heroBadgeEnabled: data.settings.heroBadgeEnabled !== undefined ? data.settings.heroBadgeEnabled : prev.heroBadgeEnabled,
             heroCtaText: data.settings.heroCtaText || prev.heroCtaText,
             heroCtaLink: data.settings.heroCtaLink || prev.heroCtaLink,
             heroBannerTitle: data.settings.heroBannerTitle || prev.heroBannerTitle,
@@ -221,28 +225,45 @@ export default function HomePage() {
                 />
                 
                 {/* Floating chic badge 1 (Rating / Tag) */}
-                <div className="absolute top-6 right-6 bg-white/90 backdrop-blur-md py-2 px-4 rounded-2xl shadow-soft-pink border border-pink-100 flex items-center gap-2">
-                  <span className="w-8 h-8 rounded-full bg-pink-100 text-rose-600 flex items-center justify-center font-bold text-xs">
-                    ⭐
-                  </span>
-                  <div>
-                    <p className="text-[11px] font-bold text-stone-800">{heroSettings.heroBadgeText || 'أعلى تقييم'}</p>
-                    <p className="text-[10px] text-stone-500">{heroSettings.heroBadgeSubtext || 'أزياء صيف 2026'}</p>
+                {heroSettings.heroBadgeEnabled !== false &&
+                  Boolean(heroSettings.heroBadgeText?.trim() || heroSettings.heroBadgeSubtext?.trim()) && (
+                  <div className="absolute top-6 right-6 bg-white/90 backdrop-blur-md py-2 px-4 rounded-2xl shadow-soft-pink border border-pink-100 flex items-center gap-2">
+                    <span className="w-8 h-8 rounded-full bg-pink-100 text-rose-600 flex items-center justify-center font-bold text-xs">
+                      ⭐
+                    </span>
+                    <div>
+                      <p className="text-[11px] font-bold text-stone-800">{heroSettings.heroBadgeText}</p>
+                      {heroSettings.heroBadgeSubtext && (
+                        <p className="text-[10px] text-stone-500">{heroSettings.heroBadgeSubtext}</p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Floating chic badge 2 (Promo Coupon) */}
-                <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-md py-3 px-4 rounded-2xl shadow-soft-pink border border-pink-100 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-400 to-rose-500 text-white flex items-center justify-center">
-                    <Sparkles className="w-5 h-5" />
+                {/* Floating chic badge 2 (Promo Coupon / Discount) */}
+                {heroSettings.heroCouponEnabled !== false &&
+                  Boolean(
+                    heroSettings.heroCouponDiscount?.trim() ||
+                    heroSettings.heroCouponCode?.trim() ||
+                    heroSettings.heroCouponTitle?.trim()
+                  ) && (
+                  <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-md py-3 px-4 rounded-2xl shadow-soft-pink border border-pink-100 flex items-center gap-3 animate-fadeIn">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-400 to-rose-500 text-white flex items-center justify-center">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                    <div>
+                      {heroSettings.heroCouponTitle && (
+                        <p className="text-xs font-bold text-stone-800">{heroSettings.heroCouponTitle}</p>
+                      )}
+                      {(heroSettings.heroCouponCode || heroSettings.heroCouponDiscount) && (
+                        <p className="text-sm font-black text-rose-600 font-sans">
+                          {heroSettings.heroCouponCode}{' '}
+                          {heroSettings.heroCouponDiscount ? `(${heroSettings.heroCouponDiscount})` : ''}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-bold text-stone-800">{heroSettings.heroCouponTitle || 'كود الخصم الفوري'}</p>
-                    <p className="text-sm font-black text-rose-600">
-                      {heroSettings.heroCouponCode || 'GIRL10'} {heroSettings.heroCouponDiscount ? `(${heroSettings.heroCouponDiscount})` : ''}
-                    </p>
-                  </div>
-                </div>
+                )}
               </div>
 
               {/* Background ambient glow circle */}

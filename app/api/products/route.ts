@@ -60,14 +60,33 @@ export async function POST(request: Request) {
       isNewArrival,
     } = body;
 
-    // Generate unique slug
-    const baseSlug = (nameEn || name)
-      .toLowerCase()
-      .trim()
-      .replace(/[^\w\s-]/g, '')
-      .replace(/[\s_-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-    const slug = `${baseSlug}-${Date.now().toString().slice(-4)}`;
+    // Generate or use custom unique slug for SEO
+    let slug = '';
+    if (body.slug && typeof body.slug === 'string' && body.slug.trim()) {
+      slug = body.slug
+        .toLowerCase()
+        .trim()
+        .replace(/[\s_]+/g, '-')
+        .replace(/[^\w\u0600-\u06FF-]/g, '')
+        .replace(/^-+|-+$/g, '');
+    }
+
+    if (!slug) {
+      const baseSlug = (nameEn || name || 'product')
+        .toLowerCase()
+        .trim()
+        .replace(/[\s_]+/g, '-')
+        .replace(/[^\w\u0600-\u06FF-]/g, '')
+        .replace(/^-+|-+$/g, '');
+      const codePart = code && typeof code === 'string' && code.trim() ? `-${code.trim()}` : '';
+      slug = `${baseSlug || 'item'}${codePart}-${Date.now().toString().slice(-4)}`;
+    }
+
+    // Ensure slug uniqueness
+    const existingSlug = await prisma.product.findUnique({ where: { slug } });
+    if (existingSlug) {
+      slug = `${slug}-${Date.now().toString().slice(-3)}`;
+    }
 
     const reviewItems = Array.isArray(reviews) ? reviews : [];
     const computedRating = rating ? parseFloat(rating) : reviewItems.length > 0 ? 5.0 : 5.0;

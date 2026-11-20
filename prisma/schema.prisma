@@ -121,6 +121,9 @@ model SiteSettings {
   heroCouponTitle     String?  @default("كود الخصم الفوري")
   heroCouponCode      String?  @default("GIRL10")
   heroCouponDiscount  String?  @default("خصم 10%")
+  heroCouponEnabled   Boolean  @default(true)
+  heroBadgeEnabled    Boolean  @default(true)
+  heroProductId       String?  // Optional linked product id from the store
   heroCtaText         String?  @default("تسوقي الآن / Shop Now")
   heroCtaLink         String?  @default("#catalog")
 

@@ -132,6 +132,9 @@ interface SiteSettings {
   heroCouponTitle?: string;
   heroCouponCode?: string;
   heroCouponDiscount?: string;
+  heroCouponEnabled?: boolean;
+  heroBadgeEnabled?: boolean;
+  heroProductId?: string;
   heroCtaText?: string;
   heroCtaLink?: string;
 }
@@ -167,9 +170,12 @@ export default function AdminPage() {
     heroImage: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1000&auto=format&fit=crop&q=80',
     heroBadgeText: 'أعلى تقييم ⭐ 4.9',
     heroBadgeSubtext: 'أزياء صيف 2026',
-    heroCouponTitle: 'كود الخصم الفوري',
-    heroCouponCode: 'GIRL10',
-    heroCouponDiscount: 'خصم 10%',
+    heroCouponTitle: '',
+    heroCouponCode: '',
+    heroCouponDiscount: '',
+    heroCouponEnabled: true,
+    heroBadgeEnabled: true,
+    heroProductId: '',
     heroCtaText: 'تسوقي الآن / Shop Now',
     heroCtaLink: '#catalog',
     heroBannerTitle: 'خصم يصل إلى 35% على تشكيلة فساتين السهرة الفاخرة!',
@@ -189,6 +195,7 @@ export default function AdminPage() {
   const [name, setName] = useState('');
   const [nameEn, setNameEn] = useState('');
   const [code, setCode] = useState('');
+  const [prodSlug, setProdSlug] = useState('');
   const [description, setDescription] = useState('');
   const [price, setPrice] = useState('');
   const [originalPrice, setOriginalPrice] = useState('');
@@ -283,6 +290,7 @@ export default function AdminPage() {
   const [editProdName, setEditProdName] = useState('');
   const [editProdNameEn, setEditProdNameEn] = useState('');
   const [editProdCode, setEditProdCode] = useState('');
+  const [editProdSlug, setEditProdSlug] = useState('');
   const [editProdPrice, setEditProdPrice] = useState('');
   const [editProdOriginalPrice, setEditProdOriginalPrice] = useState('');
   const [editProdCategoryId, setEditProdCategoryId] = useState('');
@@ -518,6 +526,44 @@ export default function AdminPage() {
       setUploadingHeroImage(false);
       e.target.value = '';
     }
+  };
+
+  // Professional Hero Product Selector
+  const handleSelectHeroProduct = (productId: string) => {
+    if (!productId) {
+      setSettings((prev) => ({
+        ...prev,
+        heroProductId: '',
+      }));
+      return;
+    }
+
+    const prod = products.find((p) => p.id === productId);
+    if (!prod) return;
+
+    const mainImg = Array.isArray(prod.images) && prod.images.length > 0 ? prod.images[0] : '';
+    const hasDiscount = prod.originalPrice && prod.originalPrice > prod.price;
+    const discountPercent = hasDiscount
+      ? Math.round((1 - prod.price / prod.originalPrice!) * 100)
+      : 0;
+
+    setSettings((prev) => ({
+      ...prev,
+      heroProductId: prod.id,
+      heroImage: mainImg || prev.heroImage,
+      heroCtaLink: `/product/${prod.slug}`,
+      heroCtaText: `تسوقي هذا الموديل الآن (${prod.price} ج.م)`,
+      heroBadgeText: prod.code ? `كود: #${prod.code}` : 'الأكثر طلباً 🔥',
+      heroBadgeSubtext: prod.name,
+      heroBadgeEnabled: true,
+      heroCouponEnabled: Boolean(hasDiscount),
+      heroCouponDiscount: hasDiscount ? `خصم ${discountPercent}%` : '',
+      heroCouponCode: prod.code ? `OFF-${prod.code}` : '',
+      heroCouponTitle: hasDiscount ? 'عرض خاص على الموديل' : '',
+    }));
+
+    setSuccessMessage(`تم ربط الموديل "${prod.name}" بالهيدر بنجاح! تم تحديث الصورة والرابط والخصم تلقائياً. ✨`);
+    setTimeout(() => setSuccessMessage(''), 5000);
   };
 
   // Upload Mid-page Promo Banner Image to Cloudinary
@@ -901,6 +947,7 @@ export default function AdminPage() {
           name,
           nameEn,
           code: code.trim() || null,
+          slug: prodSlug.trim() || undefined,
           description,
           price: parseFloat(price),
           originalPrice: originalPrice ? parseFloat(originalPrice) : null,
@@ -924,6 +971,7 @@ export default function AdminPage() {
         setName('');
         setNameEn('');
         setCode('');
+        setProdSlug('');
         setDescription('');
         setPrice('');
         setOriginalPrice('');
@@ -1053,6 +1101,7 @@ export default function AdminPage() {
     setEditProdName(prod.name);
     setEditProdNameEn(prod.nameEn || '');
     setEditProdCode(prod.code || '');
+    setEditProdSlug(prod.slug || '');
     setEditProdPrice(prod.price ? prod.price.toString() : '');
     setEditProdOriginalPrice(prod.originalPrice ? prod.originalPrice.toString() : '');
     setEditProdCategoryId(prod.category?.id || (categories.length > 0 ? categories[0].id : ''));
@@ -1140,6 +1189,7 @@ export default function AdminPage() {
           name: editProdName.trim(),
           nameEn: editProdNameEn.trim() || null,
           code: editProdCode.trim() || null,
+          slug: editProdSlug.trim() || undefined,
           price: parseFloat(editProdPrice),
           originalPrice: editProdOriginalPrice ? parseFloat(editProdOriginalPrice) : null,
           categoryId: editProdCategoryId || undefined,
@@ -2009,6 +2059,32 @@ export default function AdminPage() {
                     </div>
                   </div>
 
+                  {/* SEO URL SLUG CONTROL */}
+                  <div className="bg-gradient-to-r from-pink-50/50 via-white to-pink-50/50 p-3.5 rounded-2xl border border-pink-200 space-y-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-1">
+                      <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                        <Share2 className="w-4 h-4 text-rose-500" />
+                        <span>رابط المنتج المخصص للسيو وجوجل (SEO URL Slug):</span>
+                      </label>
+                      <span className="text-[10px] text-stone-400">يدعم الإنجليزية، العربية، الأرقام، والشرطات (-)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-stone-400 select-none bg-stone-100 px-2.5 py-2 rounded-xl border border-stone-200" dir="ltr">
+                        fashionzone.eg/product/
+                      </span>
+                      <input
+                        type="text"
+                        placeholder="اتركيه فارغاً للتوليد التلقائي، أو اكتبي رابطاً مخصصاً (مثال: black-pyjama-3606)..."
+                        value={prodSlug}
+                        onChange={(e) => setProdSlug(e.target.value)}
+                        className="flex-1 text-xs px-3.5 py-2 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 font-mono text-stone-800"
+                      />
+                    </div>
+                    <p className="text-[10px] text-stone-500">
+                      💡 هذا الرابط سيظهر للعميلات على محركات البحث (SEO) والفيسبوك والواتساب لسهولة تذكره وأرشفته.
+                    </p>
+                  </div>
+
                   <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-stone-700 mb-1.5">كود الموديل / Code</label>
@@ -2597,6 +2673,38 @@ export default function AdminPage() {
                           value={editProdNameEn}
                           onChange={(e) => setEditProdNameEn(e.target.value)}
                           className="w-full px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+                    </div>
+
+                    {/* SEO URL SLUG CONTROL */}
+                    <div className="bg-gradient-to-r from-pink-50/50 via-white to-pink-50/50 p-3 rounded-2xl border border-pink-200 space-y-1">
+                      <div className="flex flex-wrap items-center justify-between gap-1">
+                        <label className="text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                          <Share2 className="w-3.5 h-3.5 text-rose-500" />
+                          <span>رابط المنتج المخصص للسيو وجوجل (SEO URL Slug):</span>
+                        </label>
+                        {editingProduct && (
+                          <Link
+                            href={`/product/${editingProduct.slug}`}
+                            target="_blank"
+                            className="text-[10px] text-rose-600 font-bold hover:underline flex items-center gap-1"
+                          >
+                            <span>معاينة الرابط في المتجر</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-stone-400 select-none bg-stone-100 px-2.5 py-1.5 rounded-xl border border-stone-200" dir="ltr">
+                          fashionzone.eg/product/
+                        </span>
+                        <input
+                          type="text"
+                          placeholder="الرابط المخصص للسيو (Slug)..."
+                          value={editProdSlug}
+                          onChange={(e) => setEditProdSlug(e.target.value)}
+                          className="flex-1 text-xs px-3 py-1.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 font-mono text-stone-800"
                         />
                       </div>
                     </div>
@@ -3499,10 +3607,31 @@ export default function AdminPage() {
                       className="bg-white rounded-3xl p-6 border border-pink-100 shadow-sm space-y-4 hover:shadow-md transition"
                     >
                       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-pink-100">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <span className="font-mono text-base font-extrabold text-rose-600 bg-rose-50 px-3 py-1 rounded-xl border border-rose-200">
                             {order.orderNumber}
                           </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const trackUrl = `${window.location.origin}/track?order=${order.orderNumber}`;
+                              navigator.clipboard.writeText(trackUrl);
+                              setSuccessMessage(`تم نسخ رابط تتبع الأوردر (${order.orderNumber}) بنجاح! 📋`);
+                              setTimeout(() => setSuccessMessage(''), 4000);
+                            }}
+                            className="text-stone-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-pink-50 transition"
+                            title="نسخ رابط تتبع الأوردر للعميلة (Direct Link)"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                          <Link
+                            href={`/track?order=${order.orderNumber}`}
+                            target="_blank"
+                            className="text-stone-400 hover:text-rose-600 p-1.5 rounded-lg hover:bg-pink-50 transition"
+                            title="معاينة صفحة تتبع الطلب"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </Link>
                           <span className="text-xs text-stone-400">
                             {new Date(order.createdAt).toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' })}
                           </span>
@@ -3634,7 +3763,7 @@ export default function AdminPage() {
 
                             <a
                               href={`https://wa.me/${order.customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
-                                `مرحباً يا فندم من متجر Fashion Zone بخصوص طلبكِ رقم ${order.orderNumber}`
+                                `مرحباً يا فندم من متجر Fashion Zone بخصوص طلبكِ رقم ${order.orderNumber}.\nيمكنكِ متابعة وتتبع حالة طلبكِ مباشرة عبر الرابط:\n${typeof window !== 'undefined' ? window.location.origin : ''}/track?order=${order.orderNumber}`
                               )}`}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -4207,6 +4336,68 @@ export default function AdminPage() {
                   </span>
                 </div>
 
+                {/* HERO PRODUCT SELECTOR */}
+                <div className="p-4 bg-white/90 rounded-2xl border border-pink-200 shadow-xs space-y-2.5">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-xl bg-pink-100 text-rose-600 flex items-center justify-center font-bold">
+                        ⭐
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-stone-900">
+                          اختيار منتج من المتجر ليكون نجم الهيدر الرئيسي تلقائياً 🌟
+                        </h4>
+                        <p className="text-[11px] text-stone-500">
+                          بدلاً من رفع صورة وكتابة الروابط يدوياً، اختاري أي منتج ليتم وضع صورته ورابط طلبه والخصم تلقائياً وباحترافية!
+                        </p>
+                      </div>
+                    </div>
+                    {settings.heroProductId && (
+                      <button
+                        type="button"
+                        onClick={() => setSettings({ ...settings, heroProductId: '' })}
+                        className="text-[10px] text-stone-500 hover:text-red-500 underline font-bold"
+                      >
+                        إلغاء ربط المنتج
+                      </button>
+                    )}
+                  </div>
+
+                  <select
+                    value={settings.heroProductId || ''}
+                    onChange={(e) => handleSelectHeroProduct(e.target.value)}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 bg-pink-50/30 font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                  >
+                    <option value="">-- اضغطي هنا لاختيار منتج من المتجر ({products.length} منتج متوفر) --</option>
+                    {products.map((p) => {
+                      const hasDiscount = p.originalPrice && p.originalPrice > p.price;
+                      const discPercent = hasDiscount ? Math.round((1 - p.price / p.originalPrice!) * 100) : 0;
+                      return (
+                        <option key={p.id} value={p.id}>
+                          {p.code ? `[كود: ${p.code}] ` : ''}{p.name} — ({p.price} ج.م) {hasDiscount ? `[خصم ${discPercent}%]` : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  {settings.heroProductId && (
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] bg-emerald-50 text-emerald-800 p-2.5 rounded-xl border border-emerald-200">
+                      <span className="font-bold">
+                        ✓ تم ربط الهيدر بالمنتج المختار! تم تحديث صورة الغلاف، رابط الزر، والخصم تلقائياً.
+                      </span>
+                      <a
+                        href={settings.heroCtaLink || '#'}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-emerald-700 hover:underline flex items-center gap-1 font-bold"
+                      >
+                        <span>معاينة صفحة المنتج</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
                   {/* Left: Image Uploader & Live Preview */}
                   <div className="space-y-3">
@@ -4219,16 +4410,33 @@ export default function AdminPage() {
                         <Image src={settings.heroImage} alt="Hero banner" fill className="object-cover object-top" />
                         
                         {/* Live Floating Badge 1 preview */}
-                        <div className="absolute top-3 right-3 bg-white/95 py-1.5 px-3 rounded-xl shadow-xs border border-pink-100 text-[10px]">
-                          <span className="font-bold text-stone-800 block">{settings.heroBadgeText || 'أعلى تقييم ⭐ 4.9'}</span>
-                          <span className="text-stone-400 block">{settings.heroBadgeSubtext || 'أزياء صيف 2026'}</span>
-                        </div>
+                        {settings.heroBadgeEnabled !== false &&
+                          Boolean(settings.heroBadgeText?.trim() || settings.heroBadgeSubtext?.trim()) && (
+                          <div className="absolute top-3 right-3 bg-white/95 py-1.5 px-3 rounded-xl shadow-xs border border-pink-100 text-[10px] animate-fadeIn">
+                            <span className="font-bold text-stone-800 block">{settings.heroBadgeText}</span>
+                            {settings.heroBadgeSubtext && (
+                              <span className="text-stone-400 block">{settings.heroBadgeSubtext}</span>
+                            )}
+                          </div>
+                        )}
 
                         {/* Live Floating Badge 2 preview */}
-                        <div className="absolute bottom-3 left-3 bg-white/95 py-1.5 px-3 rounded-xl shadow-xs border border-pink-100 text-[10px]">
-                          <span className="text-stone-700 block font-medium">{settings.heroCouponTitle || 'كود الخصم الفوري'}</span>
-                          <span className="font-black text-rose-600 block">{settings.heroCouponCode || 'GIRL10'} {settings.heroCouponDiscount ? `(${settings.heroCouponDiscount})` : ''}</span>
-                        </div>
+                        {settings.heroCouponEnabled !== false &&
+                          Boolean(
+                            settings.heroCouponDiscount?.trim() ||
+                            settings.heroCouponCode?.trim() ||
+                            settings.heroCouponTitle?.trim()
+                          ) && (
+                          <div className="absolute bottom-3 left-3 bg-white/95 py-1.5 px-3 rounded-xl shadow-xs border border-pink-100 text-[10px] animate-fadeIn">
+                            {settings.heroCouponTitle && (
+                              <span className="text-stone-700 block font-medium">{settings.heroCouponTitle}</span>
+                            )}
+                            <span className="font-black text-rose-600 block">
+                              {settings.heroCouponCode}{' '}
+                              {settings.heroCouponDiscount ? `(${settings.heroCouponDiscount})` : ''}
+                            </span>
+                          </div>
+                        )}
 
                         <button
                           type="button"
@@ -4277,9 +4485,20 @@ export default function AdminPage() {
                   <div className="space-y-4">
                     {/* Badge 1 (Rating / Tag) */}
                     <div className="p-3.5 bg-white rounded-2xl border border-pink-100 space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600">
-                        <Star className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
-                        <span>البادج العائم العلوي (التقييم / التريند):</span>
+                      <div className="flex items-center justify-between pb-1">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600">
+                          <Star className="w-3.5 h-3.5 fill-rose-500 text-rose-500" />
+                          <span>البادج العائم العلوي (التقييم / التريند):</span>
+                        </div>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-stone-700">
+                          <input
+                            type="checkbox"
+                            checked={settings.heroBadgeEnabled !== false}
+                            onChange={(e) => setSettings({ ...settings, heroBadgeEnabled: e.target.checked })}
+                            className="w-3.5 h-3.5 text-rose-600 rounded accent-rose-500"
+                          />
+                          <span>{settings.heroBadgeEnabled !== false ? 'مفعل ✓' : 'معطل ومخفي ✕'}</span>
+                        </label>
                       </div>
                       <div className="grid grid-cols-2 gap-2">
                         <div>
@@ -4307,13 +4526,27 @@ export default function AdminPage() {
 
                     {/* Badge 2 (Coupon Badge) */}
                     <div className="p-3.5 bg-white rounded-2xl border border-pink-100 space-y-2">
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600">
-                        <Tag className="w-3.5 h-3.5 text-rose-500" />
-                        <span>البادج العائم السفلي (كود الخصم الفوري):</span>
+                      <div className="flex items-center justify-between pb-1">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-rose-600">
+                          <Tag className="w-3.5 h-3.5 text-rose-500" />
+                          <span>البادج العائم السفلي (كود الخصم ونسبة التخفيض):</span>
+                        </div>
+                        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-rose-600 bg-pink-50 px-2.5 py-1 rounded-lg border border-pink-200">
+                          <input
+                            type="checkbox"
+                            checked={settings.heroCouponEnabled !== false}
+                            onChange={(e) => setSettings({ ...settings, heroCouponEnabled: e.target.checked })}
+                            className="w-3.5 h-3.5 text-rose-600 rounded accent-rose-500"
+                          />
+                          <span>{settings.heroCouponEnabled !== false ? 'مفعل (يظهر على الصورة) ✓' : 'معطل ومخفي ✕'}</span>
+                        </label>
                       </div>
+                      <p className="text-[10px] text-stone-400">
+                        💡 لإلغاء وإخفاء الخصم تماماً من صورة الهيدر: يمكنكِ إما إلغاء تفعيل المربع أعلاه، أو مسح قيمة الخصم من الحقل أدناه.
+                      </p>
                       <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <label className="block text-[10px] text-stone-500 mb-0.5">عنوان البادج</label>
+                          <label className="block text-[10px] text-stone-500 mb-0.5">عنوان البادج (اختياري)</label>
                           <input
                             type="text"
                             value={settings.heroCouponTitle || ''}
@@ -4323,7 +4556,7 @@ export default function AdminPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-stone-500 mb-0.5">كود الخصم</label>
+                          <label className="block text-[10px] text-stone-500 mb-0.5">كود الخصم (اختياري)</label>
                           <input
                             type="text"
                             value={settings.heroCouponCode || ''}
@@ -4333,12 +4566,12 @@ export default function AdminPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-stone-500 mb-0.5">قيمة الخصم</label>
+                          <label className="block text-[10px] text-stone-500 mb-0.5">قيمة الخصم (امسحيها لإلغاء الخصم)</label>
                           <input
                             type="text"
                             value={settings.heroCouponDiscount || ''}
                             onChange={(e) => setSettings({ ...settings, heroCouponDiscount: e.target.value })}
-                            placeholder="خصم 10%"
+                            placeholder="مثال: خصم 10% أو اتركيها فارغة"
                             className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-pink-200 font-bold text-rose-600"
                           />
                         </div>
