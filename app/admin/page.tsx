@@ -4620,12 +4620,12 @@ export default function AdminPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-[10px] text-stone-500 mb-0.5">رابط الزر</label>
+                        <label className="block text-[10px] text-stone-500 mb-0.5">رابط الزر وصورة الهيدر (عند النقر على صورة الهيدر أو زر الشراء يتم التحويل إليه)</label>
                         <input
                           type="text"
                           value={settings.heroCtaLink || ''}
                           onChange={(e) => setSettings({ ...settings, heroCtaLink: e.target.value })}
-                          placeholder="#catalog"
+                          placeholder="#catalog أو /product/your-slug"
                           className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-pink-200 font-mono"
                         />
                       </div>

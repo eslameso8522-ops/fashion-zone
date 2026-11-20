@@ -215,14 +215,26 @@ export default function HomePage() {
 
             {/* Hero Image Mockup Visual */}
             <div className="relative mx-auto w-full max-w-md lg:max-w-none">
-              <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl border-4 border-white">
+              <Link
+                href={heroSettings.heroCtaLink || '#catalog'}
+                className="block relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl border-4 border-white group cursor-pointer transition-transform duration-300 hover:scale-[1.01]"
+                title="اضغطي هنا لعرض وشراء هذا الموديل"
+              >
                 <Image
                   src={heroSettings.heroImage || 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=1000&auto=format&fit=crop&q=80'}
                   alt="Fashion Zone New Collection"
                   fill
                   priority
-                  className="object-cover object-top"
+                  className="object-cover object-top group-hover:scale-105 transition-transform duration-700 ease-out"
                 />
+
+                {/* Hover indicator overlay */}
+                <div className="absolute inset-0 bg-black/15 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center pointer-events-none">
+                  <span className="bg-white/95 text-stone-900 font-bold text-xs px-4 py-2 rounded-full shadow-lg border border-pink-200 transform translate-y-2 group-hover:translate-y-0 transition-all flex items-center gap-1.5">
+                    <span>عرض تفاصيل الموديل 👗</span>
+                    <ArrowLeft className="w-4 h-4 text-rose-600" />
+                  </span>
+                </div>
                 
                 {/* Floating chic badge 1 (Rating / Tag) */}
                 {heroSettings.heroBadgeEnabled !== false &&
@@ -264,7 +276,7 @@ export default function HomePage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </Link>
 
               {/* Background ambient glow circle */}
               <div className="absolute -top-10 -right-10 w-72 h-72 bg-pink-300/30 rounded-full blur-3xl pointer-events-none -z-10"></div>
