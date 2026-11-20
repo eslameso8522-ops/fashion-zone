@@ -48,11 +48,23 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH /api/orders - تحديث حالة الطلب ورقم التتبع
+// PATCH /api/orders - تحديث بيانات الطلب بالكامل أو حالته
 export async function PATCH(request: Request) {
   try {
     const body = await request.json();
-    const { id, status, trackingNumber, notes } = body;
+    const {
+      id,
+      status,
+      trackingNumber,
+      notes,
+      customerName,
+      customerPhone,
+      customerAddress,
+      total,
+      items,
+      couponCode,
+      discountAmount,
+    } = body;
 
     if (!id) {
       return NextResponse.json({ success: false, error: 'معرف الطلب مطلوب' }, { status: 400 });
@@ -62,6 +74,13 @@ export async function PATCH(request: Request) {
     if (status !== undefined) dataToUpdate.status = status;
     if (trackingNumber !== undefined) dataToUpdate.trackingNumber = trackingNumber;
     if (notes !== undefined) dataToUpdate.notes = notes;
+    if (customerName !== undefined) dataToUpdate.customerName = customerName;
+    if (customerPhone !== undefined) dataToUpdate.customerPhone = customerPhone;
+    if (customerAddress !== undefined) dataToUpdate.customerAddress = customerAddress;
+    if (total !== undefined) dataToUpdate.total = parseFloat(total);
+    if (items !== undefined) dataToUpdate.items = items;
+    if (couponCode !== undefined) dataToUpdate.couponCode = couponCode;
+    if (discountAmount !== undefined) dataToUpdate.discountAmount = parseFloat(discountAmount);
 
     const updated = await prisma.order.update({
       where: { id },
@@ -72,7 +91,7 @@ export async function PATCH(request: Request) {
   } catch (error: any) {
     console.error('Error updating order:', error);
     return NextResponse.json(
-      { success: false, error: 'فشل في تحديث حالة الطلب' },
+      { success: false, error: 'فشل في تحديث بيانات الطلب' },
       { status: 500 }
     );
   }

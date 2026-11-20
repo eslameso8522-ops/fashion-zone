@@ -269,7 +269,47 @@ export default function AdminPage() {
   // Settings saving state
   const [savingSettings, setSavingSettings] = useState(false);
 
-  const availableSizes = ['S', 'M', 'L', 'XL', 'XXL', 'مقاس موحد', '52', '54', '56', '58'];
+  // Custom Sizes states & Presets
+  const [customSizeInput, setCustomSizeInput] = useState('');
+  const standardSizes = ['S', 'M', 'L', 'XL', '2XL', '3XL', '4XL', '5XL'];
+  const plusAndSpecialSizes = ['فري سايز', 'وان سايز', 'أوفر سايز', 'مقاس خاص', 'جامبو', '50', '52', '54', '56', '58'];
+  const weightBasedSizes = ['يلبس 60-80 ك', 'يلبس 80-100 ك', 'يلبس 100-120 ك'];
+  const kidsAndNumberSizes = ['مقاس 1', 'مقاس 2', 'مقاس 3', 'سنتين', '4 سنين', '6 سنين', '8 سنين', '10 سنين', '12 سنة', '14 سنة', '16 سنة'];
+
+  // Product Edit states
+  const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
+  const [editProdName, setEditProdName] = useState('');
+  const [editProdNameEn, setEditProdNameEn] = useState('');
+  const [editProdCode, setEditProdCode] = useState('');
+  const [editProdPrice, setEditProdPrice] = useState('');
+  const [editProdOriginalPrice, setEditProdOriginalPrice] = useState('');
+  const [editProdCategoryId, setEditProdCategoryId] = useState('');
+  const [editProdDescription, setEditProdDescription] = useState('');
+  const [editProdSizes, setEditProdSizes] = useState<string[]>([]);
+  const [editProdCustomSizeInput, setEditProdCustomSizeInput] = useState('');
+  const [editProdImages, setEditProdImages] = useState<string[]>([]);
+  const [editProdInStock, setEditProdInStock] = useState(true);
+  const [editProdIsNewArrival, setEditProdIsNewArrival] = useState(false);
+  const [savingProduct, setSavingProduct] = useState(false);
+
+  // Order Edit states
+  const [editingOrder, setEditingOrder] = useState<OrderItem | null>(null);
+  const [editOrderCustomerName, setEditOrderCustomerName] = useState('');
+  const [editOrderCustomerPhone, setEditOrderCustomerPhone] = useState('');
+  const [editOrderCustomerAddress, setEditOrderCustomerAddress] = useState('');
+  const [editOrderStatus, setEditOrderStatus] = useState('PENDING');
+  const [editOrderTrackingNumber, setEditOrderTrackingNumber] = useState('');
+  const [editOrderTotal, setEditOrderTotal] = useState('');
+  const [editOrderNotes, setEditOrderNotes] = useState('');
+  const [editOrderItems, setEditOrderItems] = useState<Array<{
+    name: string;
+    code?: string;
+    size?: string;
+    color?: string;
+    price: number;
+    quantity: number;
+  }>>([]);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   // Fetch initial data
   const fetchData = async () => {
@@ -936,6 +976,224 @@ export default function AdminPage() {
       alert('خطأ في الاتصال: ' + err.message);
     } finally {
       setCreatingOrder(false);
+    }
+  };
+
+  // Custom Size Handlers (Supports comma-separated inputs)
+  const handleAddCustomSize = (sizeStr: string, isEdit = false) => {
+    if (!sizeStr || !sizeStr.trim()) return;
+    const parts = sizeStr
+      .split(/[,،]+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (isEdit) {
+      setEditProdSizes((prev) => {
+        const next = [...prev];
+        parts.forEach((p) => {
+          if (!next.includes(p)) next.push(p);
+        });
+        return next;
+      });
+      setEditProdCustomSizeInput('');
+    } else {
+      setSelectedSizes((prev) => {
+        const next = [...prev];
+        parts.forEach((p) => {
+          if (!next.includes(p)) next.push(p);
+        });
+        return next;
+      });
+      setCustomSizeInput('');
+    }
+  };
+
+  const handleRemoveSize = (sizeToRemove: string, isEdit = false) => {
+    if (isEdit) {
+      setEditProdSizes((prev) => prev.filter((s) => s !== sizeToRemove));
+    } else {
+      setSelectedSizes((prev) => prev.filter((s) => s !== sizeToRemove));
+    }
+  };
+
+  const handleTogglePresetSize = (size: string, isEdit = false) => {
+    if (isEdit) {
+      setEditProdSizes((prev) =>
+        prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
+      );
+    } else {
+      setSelectedSizes((prev) =>
+        prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
+      );
+    }
+  };
+
+  // Start Editing Product
+  const handleStartEditProduct = (prod: ProductItem) => {
+    setEditingProduct(prod);
+    setEditProdName(prod.name);
+    setEditProdNameEn(prod.nameEn || '');
+    setEditProdCode(prod.code || '');
+    setEditProdPrice(prod.price ? prod.price.toString() : '');
+    setEditProdOriginalPrice(prod.originalPrice ? prod.originalPrice.toString() : '');
+    setEditProdCategoryId(prod.category?.id || (categories.length > 0 ? categories[0].id : ''));
+    setEditProdDescription(prod.description || '');
+    setEditProdSizes(Array.isArray(prod.sizes) ? [...prod.sizes] : []);
+    setEditProdCustomSizeInput('');
+    setEditProdImages(Array.isArray(prod.images) ? [...prod.images] : []);
+    setEditProdInStock(prod.inStock);
+    setEditProdIsNewArrival(Boolean(prod.isNewArrival));
+  };
+
+  // Save Edited Product
+  const handleSaveEditProduct = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    if (!editProdName.trim() || !editProdPrice) {
+      alert('يرجى كتابة اسم المنتج وسعره!');
+      return;
+    }
+
+    setSavingProduct(true);
+    try {
+      const res = await fetch(`/api/products/${editingProduct.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editProdName.trim(),
+          nameEn: editProdNameEn.trim() || null,
+          code: editProdCode.trim() || null,
+          price: parseFloat(editProdPrice),
+          originalPrice: editProdOriginalPrice ? parseFloat(editProdOriginalPrice) : null,
+          categoryId: editProdCategoryId || undefined,
+          description: editProdDescription.trim(),
+          sizes: editProdSizes,
+          images: editProdImages,
+          inStock: editProdInStock,
+          isNewArrival: editProdIsNewArrival,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        confetti({ particleCount: 70, spread: 60 });
+        setSuccessMessage(`تم تحديث بيانات منتج "${editProdName}" بنجاح! ✨`);
+        setEditingProduct(null);
+        fetchData();
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        alert('حدث خطأ أثناء حفظ التعديلات: ' + data.error);
+      }
+    } catch (err: any) {
+      alert('خطأ في الاتصال: ' + err.message);
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
+  // Start Editing Order
+  const handleStartEditOrder = (order: OrderItem) => {
+    setEditingOrder(order);
+    setEditOrderCustomerName(order.customerName || '');
+    setEditOrderCustomerPhone(order.customerPhone || '');
+    setEditOrderCustomerAddress(order.customerAddress || '');
+    setEditOrderStatus(order.status || 'PENDING');
+    setEditOrderTrackingNumber(order.trackingNumber || '');
+    setEditOrderTotal(order.total ? order.total.toString() : '0');
+    setEditOrderNotes(order.notes || '');
+    setEditOrderItems(
+      Array.isArray(order.items)
+        ? order.items.map((it: any) => ({
+            name: it.name || 'منتج',
+            code: it.code || '',
+            size: it.size || 'M',
+            color: it.color || 'افتراضي',
+            price: it.price || 0,
+            quantity: it.quantity || 1,
+          }))
+        : []
+    );
+  };
+
+  // Update item in order
+  const handleUpdateOrderItem = (index: number, field: string, value: any) => {
+    setEditOrderItems((prev) => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value };
+      return next;
+    });
+  };
+
+  // Remove item from order
+  const handleRemoveOrderItem = (index: number) => {
+    setEditOrderItems((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  // Add new item to order
+  const handleAddNewItemToOrder = () => {
+    setEditOrderItems((prev) => [
+      ...prev,
+      {
+        name: 'قطعة إضافية',
+        code: '',
+        size: 'فري سايز',
+        color: 'أسود',
+        price: 0,
+        quantity: 1,
+      },
+    ]);
+  };
+
+  // Recalculate order total from items
+  const handleRecalculateOrderTotal = () => {
+    const calc = editOrderItems.reduce(
+      (sum, it) => sum + (parseFloat(String(it.price)) || 0) * (parseInt(String(it.quantity)) || 1),
+      0
+    );
+    setEditOrderTotal(calc.toString());
+  };
+
+  // Save Edited Order
+  const handleSaveOrder = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingOrder) return;
+    if (!editOrderCustomerName.trim() || !editOrderTotal) {
+      alert('يرجى كتابة اسم العميلة وإجمالي الطلب!');
+      return;
+    }
+
+    setSavingOrder(true);
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingOrder.id,
+          customerName: editOrderCustomerName.trim(),
+          customerPhone: editOrderCustomerPhone.trim(),
+          customerAddress: editOrderCustomerAddress.trim(),
+          status: editOrderStatus,
+          trackingNumber: editOrderTrackingNumber.trim() || null,
+          total: parseFloat(editOrderTotal),
+          items: editOrderItems,
+          notes: editOrderNotes.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        confetti({ particleCount: 70, spread: 60 });
+        setSuccessMessage(`تم حفظ وتعديل بيانات الأوردر (${editingOrder.orderNumber}) بنجاح! 🎉`);
+        setEditingOrder(null);
+        fetchData();
+        setTimeout(() => setSuccessMessage(''), 4500);
+      } else {
+        alert('حدث خطأ أثناء تعديل الطلب: ' + data.error);
+      }
+    } catch (err: any) {
+      alert('خطأ في الاتصال: ' + err.message);
+    } finally {
+      setSavingOrder(false);
     }
   };
 
@@ -1773,31 +2031,147 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  {/* Sizes */}
-                  <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1.5">المقاسات المتوفرة:</label>
-                    <div className="flex flex-wrap gap-2">
-                      {availableSizes.map((size) => {
-                        const isSelected = selectedSizes.includes(size);
-                        return (
-                          <button
-                            type="button"
+                  {/* Dynamic Custom Sizes & Presets Manager */}
+                  <div className="space-y-3 bg-pink-50/40 p-4 rounded-2xl border border-pink-100">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <label className="block text-xs font-bold text-stone-800 flex items-center gap-1.5">
+                        <span>📏 مقاسات المنتج المختارة:</span>
+                        <span className="text-rose-600 font-mono">({selectedSizes.length} مقاس)</span>
+                      </label>
+                      {selectedSizes.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSizes([])}
+                          className="text-[10px] text-rose-600 hover:underline font-bold"
+                        >
+                          مسح جميع المقاسات
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Currently Added Sizes Tags with (x) delete */}
+                    <div className="flex flex-wrap gap-2 min-h-[32px] p-2 bg-white rounded-xl border border-pink-200">
+                      {selectedSizes.length === 0 ? (
+                        <span className="text-xs text-stone-400 italic">
+                          لم يتم تحديد أي مقاس بعد. يمكنك اختيار مقاسات من الأسفل أو كتابة مقاساتك بحرية.
+                        </span>
+                      ) : (
+                        selectedSizes.map((size) => (
+                          <span
                             key={size}
-                            onClick={() =>
-                              setSelectedSizes((prev) =>
-                                prev.includes(size) ? prev.filter((s) => s !== size) : [...prev, size]
-                              )
-                            }
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition ${
-                              isSelected
-                                ? 'bg-rose-500 text-white border-rose-500 shadow-sm'
-                                : 'bg-white text-stone-600 border-pink-200 hover:border-rose-300'
-                            }`}
+                            className="bg-rose-50 text-rose-700 border border-rose-200 px-3 py-1 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs animate-fadeIn"
                           >
-                            {size}
-                          </button>
-                        );
-                      })}
+                            <span>{size}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSize(size)}
+                              className="text-stone-400 hover:text-red-500 rounded-full"
+                              title="حذف هذا المقاس"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </span>
+                        ))
+                      )}
+                    </div>
+
+                    {/* Custom Size Free Input & Add Button */}
+                    <div className="flex items-center gap-2 pt-1">
+                      <input
+                        type="text"
+                        placeholder="اكتبي أي مقاس مخصص (مثال: يلبس من 60 ل 85 ك / أوفر سايز / 44 / مقاس 1 / 12 سنة)..."
+                        value={customSizeInput}
+                        onChange={(e) => setCustomSizeInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleAddCustomSize(customSizeInput);
+                          }
+                        }}
+                        className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-400"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleAddCustomSize(customSizeInput)}
+                        className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-xs flex items-center gap-1 whitespace-nowrap"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>إضافة المقاس</span>
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-stone-400">
+                      💡 يمكنك كتابة عدة مقاسات مفصولة بفاصلة (مثال: M, L, XL, XXL) وإضافتها دفعة واحدة.
+                    </p>
+
+                    {/* Quick Preset Buttons (Grouped) */}
+                    <div className="space-y-2 pt-2 border-t border-pink-100/70">
+                      <span className="text-[11px] font-bold text-stone-600 block">اختيار سريع من المقاسات الجاهزة:</span>
+                      
+                      {/* Standard S-5XL */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] text-stone-500 font-bold ml-1">العادية:</span>
+                        {standardSizes.map((size) => {
+                          const isSel = selectedSizes.includes(size);
+                          return (
+                            <button
+                              type="button"
+                              key={size}
+                              onClick={() => handleTogglePresetSize(size)}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition ${
+                                isSel
+                                  ? 'bg-rose-500 text-white border-rose-500 shadow-2xs'
+                                  : 'bg-white text-stone-700 border-pink-200 hover:border-rose-400'
+                              }`}
+                            >
+                              {size} {isSel && '✓'}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Plus & Free Sizes */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] text-stone-500 font-bold ml-1">الخاصة والفري:</span>
+                        {plusAndSpecialSizes.map((size) => {
+                          const isSel = selectedSizes.includes(size);
+                          return (
+                            <button
+                              type="button"
+                              key={size}
+                              onClick={() => handleTogglePresetSize(size)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${
+                                isSel
+                                  ? 'bg-rose-500 text-white border-rose-500 shadow-2xs'
+                                  : 'bg-white text-stone-700 border-pink-200 hover:border-rose-400'
+                              }`}
+                            >
+                              {size} {isSel && '✓'}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Weight-based & Kids */}
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] text-stone-500 font-bold ml-1">الأوزان والأطفال:</span>
+                        {[...weightBasedSizes, ...kidsAndNumberSizes].map((size) => {
+                          const isSel = selectedSizes.includes(size);
+                          return (
+                            <button
+                              type="button"
+                              key={size}
+                              onClick={() => handleTogglePresetSize(size)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition ${
+                                isSel
+                                  ? 'bg-rose-500 text-white border-rose-500 shadow-2xs'
+                                  : 'bg-white text-stone-700 border-pink-200 hover:border-rose-400'
+                              }`}
+                            >
+                              {size} {isSel && '✓'}
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 
@@ -1999,6 +2373,13 @@ export default function AdminPage() {
                         </td>
                         <td className="py-3 text-center">
                           <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleStartEditProduct(product)}
+                              className="p-1.5 rounded-lg text-rose-600 hover:bg-pink-50 transition"
+                              title="تعديل بيانات المنتج والمقاسات"
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </button>
                             <Link
                               href={`/product/${product.slug}`}
                               target="_blank"
@@ -2022,6 +2403,297 @@ export default function AdminPage() {
                 </table>
               </div>
             </div>
+
+            {/* ==================================================== */}
+            {/* EDIT PRODUCT MODAL */}
+            {/* ==================================================== */}
+            {editingProduct && (
+              <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+                <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-pink-100 my-8 max-h-[90vh] overflow-y-auto">
+                  <div className="flex items-center justify-between pb-4 mb-4 border-b border-pink-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-xl bg-pink-100 text-rose-600 flex items-center justify-center">
+                        <Edit2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-stone-900">تعديل بيانات المنتج والمقاسات ✏️</h3>
+                        <p className="text-[11px] text-stone-500">عدّلي الاسم، السعر، الكود، وقائمة المقاسات المخصصة</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingProduct(null)}
+                      className="text-stone-400 hover:text-stone-600 p-2 rounded-xl hover:bg-stone-100 transition"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveEditProduct} className="space-y-4 text-xs">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Name AR */}
+                      <div>
+                        <label className="block text-stone-700 font-bold mb-1">اسم المنتج بالعربي *</label>
+                        <input
+                          type="text"
+                          required
+                          value={editProdName}
+                          onChange={(e) => setEditProdName(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+
+                      {/* Name EN */}
+                      <div>
+                        <label className="block text-stone-700 font-bold mb-1">الاسم بالإنجليزي (اختياري)</label>
+                        <input
+                          type="text"
+                          value={editProdNameEn}
+                          onChange={(e) => setEditProdNameEn(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* Product Code */}
+                      <div>
+                        <label className="block text-stone-700 font-bold mb-1">كود الموديل (اختياري)</label>
+                        <input
+                          type="text"
+                          placeholder="مثال: 3606"
+                          value={editProdCode}
+                          onChange={(e) => setEditProdCode(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-pink-200 font-mono focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+
+                      {/* Price */}
+                      <div>
+                        <label className="block text-stone-700 font-bold mb-1">سعر البيع الحالي (ج.م) *</label>
+                        <input
+                          type="number"
+                          step="any"
+                          required
+                          value={editProdPrice}
+                          onChange={(e) => setEditProdPrice(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 font-bold"
+                        />
+                      </div>
+
+                      {/* Original Price */}
+                      <div>
+                        <label className="block text-stone-700 font-bold mb-1">السعر قبل الخصم (ج.م)</label>
+                        <input
+                          type="number"
+                          step="any"
+                          value={editProdOriginalPrice}
+                          onChange={(e) => setEditProdOriginalPrice(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Category */}
+                    <div>
+                      <label className="block text-stone-700 font-bold mb-1">القسم *</label>
+                      <select
+                        value={editProdCategoryId}
+                        onChange={(e) => setEditProdCategoryId(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white"
+                      >
+                        {categories.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Description */}
+                    <div>
+                      <label className="block text-stone-700 font-bold mb-1">وصف المنتج والخامات</label>
+                      <textarea
+                        rows={3}
+                        value={editProdDescription}
+                        onChange={(e) => setEditProdDescription(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                      />
+                    </div>
+
+                    {/* DYNAMIC CUSTOM SIZES MANAGER */}
+                    <div className="bg-pink-50/50 p-4 rounded-2xl border border-pink-200 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <label className="block text-xs font-bold text-stone-800">
+                            🏷️ إدارة مقاسات المنتج المتاحة:
+                          </label>
+                          <p className="text-[11px] text-stone-500">
+                            أضيفي أي مقاسات حرة أو اختاري من المقاسات الجاهزة بالأسفل
+                          </p>
+                        </div>
+                        {editProdSizes.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setEditProdSizes([])}
+                            className="text-[10px] text-red-500 hover:underline font-bold"
+                          >
+                            مسح جميع المقاسات
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Selected Size Badges */}
+                      <div className="flex flex-wrap gap-1.5 min-h-[32px] p-2 bg-white rounded-xl border border-pink-100">
+                        {editProdSizes.length === 0 ? (
+                          <span className="text-stone-400 text-[11px]">لم يتم تحديد مقاسات بعد (يمكنك إضافة مقاس الآن)</span>
+                        ) : (
+                          editProdSizes.map((size) => (
+                            <span
+                              key={size}
+                              className="inline-flex items-center gap-1 bg-rose-500 text-white font-bold text-xs px-2.5 py-1 rounded-lg shadow-2xs animate-fadeIn"
+                            >
+                              <span>{size}</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSize(size, true)}
+                                className="text-pink-200 hover:text-white transition"
+                                title="إزالة المقاس"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </span>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Custom Size Input */}
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="اكتبي أي مقاس مخصص (مثال: يلبس من 60 ل 85 ك / أوفر سايز / 44 / مقاس 1 / 12 سنة)..."
+                          value={editProdCustomSizeInput}
+                          onChange={(e) => setEditProdCustomSizeInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddCustomSize(editProdCustomSizeInput, true);
+                            }
+                          }}
+                          className="flex-1 text-xs px-3.5 py-2 rounded-xl border border-pink-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleAddCustomSize(editProdCustomSizeInput, true)}
+                          className="bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-xs flex items-center gap-1 whitespace-nowrap"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>إضافة</span>
+                        </button>
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div className="space-y-1.5 pt-2 border-t border-pink-100">
+                        <span className="text-[11px] font-bold text-stone-600 block">اختيار سريع:</span>
+                        
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="text-[10px] text-stone-500 font-bold ml-1">العادية:</span>
+                          {standardSizes.map((size) => {
+                            const isSel = editProdSizes.includes(size);
+                            return (
+                              <button
+                                type="button"
+                                key={size}
+                                onClick={() => handleTogglePresetSize(size, true)}
+                                className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border transition ${
+                                  isSel
+                                    ? 'bg-rose-500 text-white border-rose-500'
+                                    : 'bg-white text-stone-700 border-pink-200 hover:border-rose-400'
+                                }`}
+                              >
+                                {size} {isSel && '✓'}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="text-[10px] text-stone-500 font-bold ml-1">الخاصة والفري:</span>
+                          {plusAndSpecialSizes.map((size) => {
+                            const isSel = editProdSizes.includes(size);
+                            return (
+                              <button
+                                type="button"
+                                key={size}
+                                onClick={() => handleTogglePresetSize(size, true)}
+                                className={`px-2 py-0.5 rounded-lg text-[11px] font-bold border transition ${
+                                  isSel
+                                    ? 'bg-rose-500 text-white border-rose-500'
+                                    : 'bg-white text-stone-700 border-pink-200 hover:border-rose-400'
+                                }`}
+                              >
+                                {size} {isSel && '✓'}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Stock & New Arrival Checkboxes */}
+                    <div className="flex flex-wrap items-center gap-6 pt-2">
+                      <label className="flex items-center gap-2 cursor-pointer font-bold text-stone-700">
+                        <input
+                          type="checkbox"
+                          checked={editProdInStock}
+                          onChange={(e) => setEditProdInStock(e.target.checked)}
+                          className="w-4 h-4 text-rose-600 rounded focus:ring-rose-500 accent-rose-500"
+                        />
+                        <span>متوفر في المخزون (In Stock)</span>
+                      </label>
+
+                      <label className="flex items-center gap-2 cursor-pointer font-bold text-rose-600">
+                        <input
+                          type="checkbox"
+                          checked={editProdIsNewArrival}
+                          onChange={(e) => setEditProdIsNewArrival(e.target.checked)}
+                          className="w-4 h-4 text-rose-600 rounded focus:ring-rose-500 accent-rose-500"
+                        />
+                        <span>عرض في صفحة وصل حديثاً 🎀</span>
+                      </label>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex justify-end gap-3 pt-4 border-t border-pink-100">
+                      <button
+                        type="button"
+                        onClick={() => setEditingProduct(null)}
+                        className="px-5 py-2.5 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100"
+                      >
+                        إلغاء
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingProduct}
+                        className="bg-rose-500 hover:bg-rose-600 disabled:opacity-50 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition flex items-center gap-2"
+                      >
+                        {savingProduct ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>جاري حفظ التعديلات...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span>حفظ التعديلات الآن</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -2689,6 +3361,15 @@ export default function AdminPage() {
 
                           <div className="flex items-center gap-2">
                             <button
+                              onClick={() => handleStartEditOrder(order)}
+                              className="inline-flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-3 py-2 rounded-xl transition text-xs border border-pink-200"
+                              title="تعديل بيانات الطلب والقطع والمقاسات"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                              <span>تعديل الأوردر</span>
+                            </button>
+
+                            <button
                               onClick={() => handleDeleteOrder(order.id, order.orderNumber)}
                               className="inline-flex items-center gap-1 text-stone-400 hover:text-red-600 bg-stone-50 hover:bg-red-50 p-2 rounded-xl transition text-xs font-bold border border-stone-200"
                               title="حذف هذا الطلب نهائياً"
@@ -2738,6 +3419,331 @@ export default function AdminPage() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+
+            {/* ==================================================== */}
+            {/* EDIT ORDER MODAL */}
+            {/* ==================================================== */}
+            {editingOrder && (
+              <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+                <div className="bg-white rounded-3xl max-w-3xl w-full p-6 shadow-2xl border border-pink-100 my-8 max-h-[92vh] overflow-y-auto">
+                  <div className="flex items-center justify-between pb-4 mb-4 border-b border-pink-100">
+                    <div className="flex items-center gap-2">
+                      <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200">
+                        <ShoppingBag className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-base font-bold text-stone-900">
+                          تعديل الأوردر رقم: <span className="font-mono text-rose-600">#{editingOrder.orderNumber}</span> ✏️
+                        </h3>
+                        <p className="text-[11px] text-stone-500">
+                          تعديل بيانات العميلة، حالة الطلب، المقاسات، الألوان، الأسعار، وإضافة أو حذف منتجات
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setEditingOrder(null)}
+                      className="text-stone-400 hover:text-stone-600 p-2 rounded-xl hover:bg-stone-100 transition"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveOrder} className="space-y-4 text-xs">
+                    {/* Customer Info */}
+                    <div className="bg-stone-50 p-4 rounded-2xl border border-stone-200 space-y-3">
+                      <h4 className="font-bold text-stone-800 text-xs">بيانات العميلة والشحن:</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-stone-700 font-bold mb-1">اسم العميلة *</label>
+                          <input
+                            type="text"
+                            required
+                            value={editOrderCustomerName}
+                            onChange={(e) => setEditOrderCustomerName(e.target.value)}
+                            className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white focus:outline-none focus:ring-2 focus:ring-rose-400"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-stone-700 font-bold mb-1">رقم الهاتف / الواتساب *</label>
+                          <input
+                            type="text"
+                            required
+                            value={editOrderCustomerPhone}
+                            onChange={(e) => setEditOrderCustomerPhone(e.target.value)}
+                            className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white focus:outline-none focus:ring-2 focus:ring-rose-400"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-stone-700 font-bold mb-1">العنوان بالتفصيل *</label>
+                        <input
+                          type="text"
+                          required
+                          value={editOrderCustomerAddress}
+                          onChange={(e) => setEditOrderCustomerAddress(e.target.value)}
+                          className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-stone-700 font-bold mb-1">حالة الطلب:</label>
+                          <select
+                            value={editOrderStatus}
+                            onChange={(e) => setEditOrderStatus(e.target.value)}
+                            className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white font-bold text-stone-800 focus:outline-none focus:ring-2 focus:ring-rose-400"
+                          >
+                            <option value="PENDING">⏳ قيد المراجعة والتأكيد</option>
+                            <option value="PREPARING">🎀 جاري التجهيز والتغليف</option>
+                            <option value="SHIPPED">🚚 تم التسليم لمندوب الشحن</option>
+                            <option value="DELIVERED">🎉 تم التوصيل بنجاح</option>
+                            <option value="CANCELLED">✕ تم الإلغاء</option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label className="block text-stone-700 font-bold mb-1">رقم بوليصة الشحن (تتبع):</label>
+                          <input
+                            type="text"
+                            placeholder="مثال: ARAMEX-98421"
+                            value={editOrderTrackingNumber}
+                            onChange={(e) => setEditOrderTrackingNumber(e.target.value)}
+                            className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white font-mono focus:outline-none focus:ring-2 focus:ring-rose-400"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Ordered Items List */}
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <div>
+                          <h4 className="font-bold text-stone-900 text-xs">
+                            القطع المطلوبة في هذا الطلب ({editOrderItems.length}):
+                          </h4>
+                          <p className="text-[11px] text-stone-400">
+                            يمكنك تعديل كود الموديل، المقاس، اللون، السعر، والكمية بحرية كاملة
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleAddNewItemToOrder}
+                            className="bg-pink-100 hover:bg-pink-200 text-rose-700 text-[11px] font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>إضافة قطعة للأوردر</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleRecalculateOrderTotal}
+                            className="bg-stone-100 hover:bg-stone-200 text-stone-700 text-[11px] font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1"
+                            title="حساب المجموع بناءً على أسعار القطع وكمياتها"
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span>إعادة حساب الإجمالي</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {editOrderItems.length === 0 ? (
+                        <div className="text-center py-6 border border-dashed border-pink-200 rounded-2xl text-stone-400">
+                          لا توجد قطع في هذا الطلب. اضغطي على &quot;إضافة قطعة للأوردر&quot; لإضافة قطع.
+                        </div>
+                      ) : (
+                        <div className="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+                          {editOrderItems.map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="p-3 bg-pink-50/40 rounded-2xl border border-pink-100 space-y-2 text-xs"
+                            >
+                              <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                                {/* Item Name */}
+                                <div className="sm:col-span-4">
+                                  <label className="text-[10px] text-stone-500 font-bold block mb-0.5">اسم القطعة</label>
+                                  <input
+                                    type="text"
+                                    value={item.name}
+                                    onChange={(e) => handleUpdateOrderItem(idx, 'name', e.target.value)}
+                                    className="w-full px-2.5 py-1.5 rounded-lg border border-pink-200 bg-white"
+                                  />
+                                </div>
+
+                                {/* Code */}
+                                <div className="sm:col-span-2">
+                                  <label className="text-[10px] text-stone-500 font-bold block mb-0.5">كود الموديل</label>
+                                  <input
+                                    type="text"
+                                    placeholder="كود"
+                                    value={item.code || ''}
+                                    onChange={(e) => handleUpdateOrderItem(idx, 'code', e.target.value)}
+                                    className="w-full px-2 py-1.5 rounded-lg border border-pink-200 bg-white font-mono"
+                                  />
+                                </div>
+
+                                {/* Size */}
+                                <div className="sm:col-span-2">
+                                  <label className="text-[10px] text-stone-500 font-bold block mb-0.5">المقاس</label>
+                                  <input
+                                    type="text"
+                                    placeholder="المقاس"
+                                    value={item.size || ''}
+                                    onChange={(e) => handleUpdateOrderItem(idx, 'size', e.target.value)}
+                                    className="w-full px-2 py-1.5 rounded-lg border border-pink-200 bg-white font-bold"
+                                  />
+                                </div>
+
+                                {/* Color */}
+                                <div className="sm:col-span-2">
+                                  <label className="text-[10px] text-stone-500 font-bold block mb-0.5">اللون</label>
+                                  <input
+                                    type="text"
+                                    placeholder="اللون"
+                                    value={item.color || ''}
+                                    onChange={(e) => handleUpdateOrderItem(idx, 'color', e.target.value)}
+                                    className="w-full px-2 py-1.5 rounded-lg border border-pink-200 bg-white"
+                                  />
+                                </div>
+
+                                {/* Actions */}
+                                <div className="sm:col-span-2 flex items-center justify-end pt-3">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveOrderItem(idx)}
+                                    className="text-stone-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-white"
+                                    title="حذف هذه القطعة"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Price, Quantity, Subtotal, and Quick Size chips */}
+                              <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-pink-100/60">
+                                <div className="flex items-center gap-3">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] text-stone-500">السعر:</span>
+                                    <input
+                                      type="number"
+                                      step="any"
+                                      value={item.price}
+                                      onChange={(e) => handleUpdateOrderItem(idx, 'price', e.target.value)}
+                                      className="w-20 px-2 py-1 rounded-lg border border-pink-200 bg-white font-bold"
+                                    />
+                                    <span className="text-[10px] text-stone-500">ج.م</span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] text-stone-500">الكمية:</span>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      value={item.quantity || 1}
+                                      onChange={(e) => handleUpdateOrderItem(idx, 'quantity', e.target.value)}
+                                      className="w-14 px-2 py-1 rounded-lg border border-pink-200 bg-white text-center font-bold"
+                                    />
+                                  </div>
+
+                                  <div className="text-[11px] text-stone-600 font-bold">
+                                    = {(parseFloat(String(item.price)) || 0) * (parseInt(String(item.quantity)) || 1)} ج.م
+                                  </div>
+                                </div>
+
+                                {/* Quick size presets for fast editing */}
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[9px] text-stone-400">مقاس سريع:</span>
+                                  {['S', 'M', 'L', 'XL', '2XL', 'فري سايز', 'أوفر سايز'].map((sz) => (
+                                    <button
+                                      type="button"
+                                      key={sz}
+                                      onClick={() => handleUpdateOrderItem(idx, 'size', sz)}
+                                      className={`text-[9px] px-1.5 py-0.5 rounded border transition ${
+                                        item.size === sz
+                                          ? 'bg-rose-500 text-white border-rose-500'
+                                          : 'bg-white text-stone-600 border-pink-200 hover:border-rose-400'
+                                      }`}
+                                    >
+                                      {sz}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Total Amount & Notes */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-pink-100">
+                      <div>
+                        <label className="block text-stone-700 font-bold mb-1">
+                          إجمالي قيمة الأوردر المطلوبة من العميلة (ج.م) *
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            step="any"
+                            required
+                            value={editOrderTotal}
+                            onChange={(e) => setEditOrderTotal(e.target.value)}
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-pink-300 bg-white font-black text-rose-600 text-base focus:outline-none focus:ring-2 focus:ring-rose-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleRecalculateOrderTotal}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 border border-pink-200 font-bold text-xs px-3 py-2.5 rounded-xl whitespace-nowrap transition"
+                          >
+                            حساب تلقائي 🔄
+                          </button>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-stone-700 font-bold mb-1">ملاحظات على الأوردر (اختياري)</label>
+                        <input
+                          type="text"
+                          placeholder="ملاحظات التسليم أو التغليف أو شركة الشحن..."
+                          value={editOrderNotes}
+                          onChange={(e) => setEditOrderNotes(e.target.value)}
+                          className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 bg-white focus:outline-none focus:ring-2 focus:ring-rose-400"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex justify-end gap-3 pt-4 border-t border-pink-100">
+                      <button
+                        type="button"
+                        onClick={() => setEditingOrder(null)}
+                        className="px-5 py-2.5 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100"
+                      >
+                        إلغاء
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={savingOrder}
+                        className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition flex items-center gap-2"
+                      >
+                        {savingOrder ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            <span>جاري حفظ تعديلات الأوردر...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Check className="w-4 h-4" />
+                            <span>تأكيد وحفظ تعديلات الأوردر</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             )}
           </div>
