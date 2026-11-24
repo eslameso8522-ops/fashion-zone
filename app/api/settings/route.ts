@@ -120,6 +120,8 @@ export async function POST(request: Request) {
       heroProductId,
       heroCtaText,
       heroCtaLink,
+      watermarkEnabled,
+      watermarkPosition,
     } = body;
 
     const dataPayload: any = {};
@@ -156,6 +158,8 @@ export async function POST(request: Request) {
     if (heroProductId !== undefined) dataPayload.heroProductId = heroProductId || null;
     if (heroCtaText !== undefined) dataPayload.heroCtaText = heroCtaText;
     if (heroCtaLink !== undefined) dataPayload.heroCtaLink = heroCtaLink;
+    if (watermarkEnabled !== undefined) dataPayload.watermarkEnabled = Boolean(watermarkEnabled);
+    if (watermarkPosition !== undefined) dataPayload.watermarkPosition = watermarkPosition;
 
     const updated = await prisma.siteSettings.upsert({
       where: { id: 'default' },
@@ -187,6 +191,8 @@ export async function POST(request: Request) {
         heroProductId: heroProductId || null,
         heroCtaText: heroCtaText || 'تسوقي الآن / Shop Now',
         heroCtaLink: heroCtaLink || '#catalog',
+        watermarkEnabled: watermarkEnabled !== undefined ? Boolean(watermarkEnabled) : true,
+        watermarkPosition: watermarkPosition || 'bottom-right',
       },
     });
 

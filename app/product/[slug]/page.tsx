@@ -11,10 +11,53 @@ interface Props {
 
 async function getProductBySlug(slug: string) {
   try {
-    const dbProduct = await prisma.product.findUnique({
-      where: { slug },
+    const raw = (slug || '').trim();
+    const decoded = decodeURIComponent(raw).trim();
+    const stripped = decoded.replace(/^-+|-+$/g, '');
+
+    // 1. Direct match on decoded
+    let dbProduct = await prisma.product.findUnique({
+      where: { slug: decoded },
       include: { category: true },
     });
+
+    // 2. Match without leading/trailing hyphens
+    if (!dbProduct && stripped && stripped !== decoded) {
+      dbProduct = await prisma.product.findUnique({
+        where: { slug: stripped },
+        include: { category: true },
+      });
+    }
+
+    // 3. Match with leading hyphen if needed
+    if (!dbProduct && stripped) {
+      dbProduct = await prisma.product.findUnique({
+        where: { slug: `-${stripped}` },
+        include: { category: true },
+      });
+    }
+
+    // 4. Match by product ID directly
+    if (!dbProduct) {
+      dbProduct = await prisma.product.findUnique({
+        where: { id: decoded },
+        include: { category: true },
+      }).catch(() => null);
+    }
+
+    // 5. Match by product code or partial slug
+    if (!dbProduct && stripped) {
+      dbProduct = await prisma.product.findFirst({
+        where: {
+          OR: [
+            { code: stripped },
+            { slug: { contains: stripped } },
+          ],
+        },
+        include: { category: true },
+      });
+    }
+
     if (dbProduct) {
       return {
         id: dbProduct.id,
@@ -40,7 +83,7 @@ async function getProductBySlug(slug: string) {
     console.error('Error fetching product from DB:', err);
   }
 
-  return PRODUCTS.find((p) => p.slug === slug);
+  return PRODUCTS.find((p) => p.slug === slug || p.slug === decodeURIComponent(slug));
 }
 
 // Generate Dynamic SEO & Open Graph Meta Tags for Facebook & WhatsApp

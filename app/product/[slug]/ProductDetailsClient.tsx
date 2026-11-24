@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import {
@@ -36,6 +36,24 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
   const [quickOrderOpen, setQuickOrderOpen] = useState(false);
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
   const [zoomModalOpen, setZoomModalOpen] = useState(false);
+  const [watermarkEnabled, setWatermarkEnabled] = useState(true);
+  const [watermarkPos, setWatermarkPos] = useState<'bottom-right' | 'bottom-left' | 'center'>('bottom-right');
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.settings) {
+          if (data.settings.watermarkEnabled !== undefined) {
+            setWatermarkEnabled(Boolean(data.settings.watermarkEnabled));
+          }
+          if (data.settings.watermarkPosition) {
+            setWatermarkPos(data.settings.watermarkPosition);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const isFavorite = isInWishlist(product.id);
 
@@ -101,8 +119,39 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
               </span>
             )}
 
+            {/* Official Fashion Zone Luxury Boutique Watermark Badge */}
+            {watermarkEnabled && (
+              <div
+                className={`absolute z-10 pointer-events-none select-none transition-all duration-300 ${
+                  watermarkPos === 'bottom-left'
+                    ? 'bottom-4 left-4'
+                    : watermarkPos === 'center'
+                    ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 scale-110'
+                    : 'bottom-4 right-4'
+                }`}
+              >
+                <div className="bg-white/92 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-pink-200/90 shadow-md flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-xl bg-gradient-to-tr from-pink-500 via-rose-500 to-rose-600 text-white flex items-center justify-center text-xs shadow-xs font-bold">
+                    ✨
+                  </span>
+                  <div className="flex flex-col text-left">
+                    <span className="text-xs font-black tracking-wide bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent font-serif leading-none">
+                      Fashion Zone
+                    </span>
+                    <span className="text-[9px] font-black text-rose-500 tracking-wider uppercase leading-tight mt-0.5">
+                      BOUTIQUE ✨ ORIGINAL
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Click to Zoom Pill Indicator */}
-            <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-sm text-stone-800 text-xs font-bold py-2 px-3.5 rounded-full shadow-lg border border-pink-200/80 flex items-center gap-1.5 transition-all transform group-hover:bg-rose-500 group-hover:text-white group-hover:scale-105 z-10">
+            <div
+              className={`absolute ${
+                watermarkPos === 'bottom-right' ? 'bottom-4 left-4' : 'bottom-4 right-4'
+              } bg-white/95 backdrop-blur-sm text-stone-800 text-xs font-bold py-2 px-3.5 rounded-full shadow-lg border border-pink-200/80 flex items-center gap-1.5 transition-all transform group-hover:bg-rose-500 group-hover:text-white group-hover:scale-105 z-10`}
+            >
               <ZoomIn className="w-4 h-4 text-rose-500 group-hover:text-white transition-colors" />
               <span>تكبير وزوم 🔍</span>
             </div>

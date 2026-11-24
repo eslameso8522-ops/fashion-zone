@@ -246,6 +246,18 @@ export default function ImageZoomModal({
             alt={productName}
             className="max-w-full max-h-[75vh] w-auto h-auto object-contain rounded-2xl shadow-2xl pointer-events-none"
           />
+
+          {/* Boutique Brand Badge in Zoom Modal */}
+          <div className="absolute bottom-3 right-3 pointer-events-none select-none z-10">
+            <div className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-pink-200/90 text-stone-900 flex items-center gap-1.5 shadow-lg">
+              <span className="w-5 h-5 rounded-lg bg-gradient-to-tr from-pink-500 to-rose-600 text-white flex items-center justify-center text-[10px] font-bold">
+                ✨
+              </span>
+              <span className="text-xs font-black tracking-wide font-serif text-stone-900">
+                Fashion Zone <span className="text-rose-600 font-bold text-[10px]">| BOUTIQUE</span>
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Carousel Nav Arrows (Previous / Next) */}

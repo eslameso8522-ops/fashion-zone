@@ -139,6 +139,8 @@ interface SiteSettings {
   heroProductId?: string;
   heroCtaText?: string;
   heroCtaLink?: string;
+  watermarkEnabled?: boolean;
+  watermarkPosition?: 'bottom-right' | 'bottom-left' | 'center';
 }
 
 type TabType = 'overview' | 'products' | 'categories' | 'orders' | 'coupons' | 'ads_settings';
@@ -386,12 +388,36 @@ export default function AdminPage() {
       }
       if (settingsData.success && settingsData.settings) {
         setSettings(settingsData.settings);
+        if (settingsData.settings.watermarkEnabled !== undefined) {
+          setAutoWatermark(Boolean(settingsData.settings.watermarkEnabled));
+        }
+        if (settingsData.settings.watermarkPosition) {
+          setWatermarkPosition(settingsData.settings.watermarkPosition);
+        }
       }
       if (couponsData.success && couponsData.coupons) {
         setCoupons(couponsData.coupons);
       }
     } catch (e) {
       console.error('Error fetching admin data', e);
+    }
+  };
+
+  // Instant sync for Watermark settings to backend
+  const handleUpdateWatermarkSettings = async (enabled: boolean, pos: 'bottom-right' | 'bottom-left' | 'center') => {
+    setAutoWatermark(enabled);
+    setWatermarkPosition(pos);
+    setSettings((prev) => ({ ...prev, watermarkEnabled: enabled, watermarkPosition: pos }));
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ watermarkEnabled: enabled, watermarkPosition: pos }),
+      });
+      setSuccessMessage('تم حفظ وتطبيق موضع لوجو المتجر على جميع صفحات المنتجات بنجاح! ✨');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      console.error('Failed to save watermark settings', err);
     }
   };
 
@@ -600,7 +626,7 @@ export default function AdminPage() {
       heroBadgeEnabled: true,
       heroCouponEnabled: Boolean(hasDiscount),
       heroCouponDiscount: hasDiscount ? `خصم ${discountPercent}%` : '',
-      heroCouponCode: prod.code ? `OFF-${prod.code}` : '',
+      heroCouponCode: hasDiscount && prod.code ? `OFF-${prod.code}` : '',
       heroCouponTitle: hasDiscount ? 'عرض خاص على الموديل' : '',
     }));
 
@@ -2130,7 +2156,7 @@ export default function AdminPage() {
                   <input
                     type="checkbox"
                     checked={autoWatermark}
-                    onChange={(e) => setAutoWatermark(e.target.checked)}
+                    onChange={(e) => handleUpdateWatermarkSettings(e.target.checked, watermarkPosition)}
                     className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-500 accent-rose-600"
                   />
                   <span>وضع اللوجو على الصور</span>
@@ -2141,7 +2167,7 @@ export default function AdminPage() {
                     <span className="text-stone-500 font-medium">الموضع:</span>
                     <select
                       value={watermarkPosition}
-                      onChange={(e) => setWatermarkPosition(e.target.value as any)}
+                      onChange={(e) => handleUpdateWatermarkSettings(autoWatermark, e.target.value as any)}
                       className="bg-pink-50/60 px-2 py-1 rounded-lg border border-pink-200 text-stone-800 font-bold focus:outline-none"
                     >
                       <option value="bottom-right">أسفل اليمين</option>
@@ -2388,7 +2414,7 @@ export default function AdminPage() {
                         <input
                           type="checkbox"
                           checked={autoWatermark}
-                          onChange={(e) => setAutoWatermark(e.target.checked)}
+                          onChange={(e) => handleUpdateWatermarkSettings(e.target.checked, watermarkPosition)}
                           className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-500 accent-rose-600"
                         />
                         <span>✨ وضع لوجو وعلامة مائية Fashion Zone تلقائياً على الصور</span>
@@ -2398,7 +2424,7 @@ export default function AdminPage() {
                           <span className="text-stone-500 font-medium">موضع اللوجو:</span>
                           <select
                             value={watermarkPosition}
-                            onChange={(e) => setWatermarkPosition(e.target.value as any)}
+                            onChange={(e) => handleUpdateWatermarkSettings(autoWatermark, e.target.value as any)}
                             className="bg-pink-50/50 px-2.5 py-1 rounded-lg border border-pink-200 text-stone-800 font-bold focus:outline-none"
                           >
                             <option value="bottom-right">أسفل اليمين</option>
@@ -3169,7 +3195,7 @@ export default function AdminPage() {
                           <input
                             type="checkbox"
                             checked={autoWatermark}
-                            onChange={(e) => setAutoWatermark(e.target.checked)}
+                            onChange={(e) => handleUpdateWatermarkSettings(e.target.checked, watermarkPosition)}
                             className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-500 accent-rose-600"
                           />
                           <span>✨ وضع لوجو وعلامة مائية Fashion Zone تلقائياً على الصور</span>
@@ -3179,7 +3205,7 @@ export default function AdminPage() {
                             <span className="text-stone-500 font-medium">موضع اللوجو:</span>
                             <select
                               value={watermarkPosition}
-                              onChange={(e) => setWatermarkPosition(e.target.value as any)}
+                              onChange={(e) => handleUpdateWatermarkSettings(autoWatermark, e.target.value as any)}
                               className="bg-pink-50/50 px-2.5 py-1 rounded-lg border border-pink-200 text-stone-800 font-bold focus:outline-none"
                             >
                               <option value="bottom-right">أسفل اليمين</option>
@@ -5054,15 +5080,33 @@ export default function AdminPage() {
                           <Tag className="w-3.5 h-3.5 text-rose-500" />
                           <span>البادج العائم السفلي (كود الخصم ونسبة التخفيض):</span>
                         </div>
-                        <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-rose-600 bg-pink-50 px-2.5 py-1 rounded-lg border border-pink-200">
-                          <input
-                            type="checkbox"
-                            checked={settings.heroCouponEnabled !== false}
-                            onChange={(e) => setSettings({ ...settings, heroCouponEnabled: e.target.checked })}
-                            className="w-3.5 h-3.5 text-rose-600 rounded accent-rose-500"
-                          />
-                          <span>{settings.heroCouponEnabled !== false ? 'مفعل (يظهر على الصورة) ✓' : 'معطل ومخفي ✕'}</span>
-                        </label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSettings(prev => ({
+                                ...prev,
+                                heroCouponEnabled: false,
+                                heroCouponDiscount: '',
+                                heroCouponCode: '',
+                                heroCouponTitle: '',
+                              }));
+                            }}
+                            className="text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-pink-100/70 hover:bg-pink-100 px-2.5 py-1 rounded-lg border border-pink-200 transition flex items-center gap-1 cursor-pointer"
+                            title="مسح وإلغاء بادج الخصم نهائياً من صورة الهيدر"
+                          >
+                            <span>🗑️ مسح وإخفاء الخصم فوراً</span>
+                          </button>
+                          <label className="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-rose-600 bg-pink-50 px-2.5 py-1 rounded-lg border border-pink-200">
+                            <input
+                              type="checkbox"
+                              checked={settings.heroCouponEnabled !== false}
+                              onChange={(e) => setSettings({ ...settings, heroCouponEnabled: e.target.checked })}
+                              className="w-3.5 h-3.5 text-rose-600 rounded accent-rose-500"
+                            />
+                            <span>{settings.heroCouponEnabled !== false ? 'مفعل (يظهر على الصورة) ✓' : 'معطل ومخفي ✕'}</span>
+                          </label>
+                        </div>
                       </div>
                       <p className="text-[10px] text-stone-400">
                         💡 لإلغاء وإخفاء الخصم تماماً من صورة الهيدر: يمكنكِ إما إلغاء تفعيل المربع أعلاه، أو مسح قيمة الخصم من الحقل أدناه.

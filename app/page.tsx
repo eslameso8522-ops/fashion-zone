@@ -32,6 +32,8 @@ export default function HomePage() {
     heroBannerCtaLink: '#catalog',
     heroBannerImage: '',
     heroBannerEnabled: true,
+    watermarkEnabled: true,
+    watermarkPosition: 'bottom-right',
   });
 
   // Fetch live products and hero settings from MySQL on mount
@@ -61,6 +63,8 @@ export default function HomePage() {
             heroBannerCtaLink: data.settings.heroBannerCtaLink || prev.heroBannerCtaLink,
             heroBannerImage: data.settings.heroBannerImage !== undefined ? data.settings.heroBannerImage : prev.heroBannerImage,
             heroBannerEnabled: data.settings.heroBannerEnabled !== undefined ? data.settings.heroBannerEnabled : prev.heroBannerEnabled,
+            watermarkEnabled: data.settings.watermarkEnabled !== undefined ? data.settings.watermarkEnabled : prev.watermarkEnabled,
+            watermarkPosition: data.settings.watermarkPosition || prev.watermarkPosition,
           }));
         }
       })
@@ -259,7 +263,11 @@ export default function HomePage() {
                     heroSettings.heroCouponCode?.trim() ||
                     heroSettings.heroCouponTitle?.trim()
                   ) && (
-                  <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-md py-3 px-4 rounded-2xl shadow-soft-pink border border-pink-100 flex items-center gap-3 animate-fadeIn">
+                  <div className={`absolute ${
+                    heroSettings.watermarkEnabled !== false && heroSettings.watermarkPosition === 'bottom-left'
+                      ? 'bottom-20 left-6'
+                      : 'bottom-6 left-6'
+                  } bg-white/95 backdrop-blur-md py-3 px-4 rounded-2xl shadow-soft-pink border border-pink-100 flex items-center gap-3 animate-fadeIn z-10`}>
                     <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-pink-400 to-rose-500 text-white flex items-center justify-center">
                       <Sparkles className="w-5 h-5" />
                     </div>
@@ -273,6 +281,33 @@ export default function HomePage() {
                           {heroSettings.heroCouponDiscount ? `(${heroSettings.heroCouponDiscount})` : ''}
                         </p>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Official Fashion Zone Boutique Luxury Watermark on Hero Image */}
+                {heroSettings.watermarkEnabled !== false && (
+                  <div
+                    className={`absolute z-10 pointer-events-none select-none transition-all duration-300 ${
+                      heroSettings.watermarkPosition === 'bottom-left'
+                        ? 'bottom-6 left-6'
+                        : heroSettings.watermarkPosition === 'center'
+                        ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 scale-110'
+                        : 'bottom-6 right-6'
+                    }`}
+                  >
+                    <div className="bg-white/92 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-pink-200/90 shadow-md flex items-center gap-2">
+                      <span className="w-6 h-6 rounded-xl bg-gradient-to-tr from-pink-500 via-rose-500 to-rose-600 text-white flex items-center justify-center text-xs shadow-xs font-bold">
+                        ✨
+                      </span>
+                      <div className="flex flex-col text-left">
+                        <span className="text-xs font-black tracking-wide bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent font-serif leading-none">
+                          Fashion Zone
+                        </span>
+                        <span className="text-[9px] font-black text-rose-500 tracking-wider uppercase leading-tight mt-0.5">
+                          BOUTIQUE ✨ ORIGINAL
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}

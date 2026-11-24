@@ -59,6 +59,14 @@ export default function ProductCard({ product }: { product: Product }) {
               }`}
             />
           </button>
+
+          {/* Fashion Zone Boutique Brandmark */}
+          <div className="absolute bottom-2.5 right-2.5 z-10 pointer-events-none select-none">
+            <span className="bg-white/90 backdrop-blur-xs text-[10px] font-black tracking-tight text-stone-900 px-2 py-0.5 rounded-lg border border-pink-200/90 shadow-2xs flex items-center gap-1 font-serif">
+              <span className="text-rose-500">✨</span>
+              <span>Fashion Zone</span>
+            </span>
+          </div>
         </div>
 
         {/* Content Details */}
