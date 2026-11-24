@@ -2106,6 +2106,53 @@ export default function AdminPage() {
               </div>
             </div>
 
+            {/* Quick Watermark Protection Status Bar */}
+            <div className="bg-gradient-to-r from-pink-50 via-rose-50/70 to-pink-50 border border-pink-200 p-4 rounded-2xl flex flex-wrap items-center justify-between gap-3 text-xs shadow-2xs">
+              <div className="flex items-center gap-3">
+                <span className="w-9 h-9 rounded-xl bg-gradient-to-tr from-pink-500 to-rose-600 text-white flex items-center justify-center font-bold shadow-xs text-base">
+                  ✨
+                </span>
+                <div>
+                  <h4 className="font-bold text-stone-900 flex items-center gap-1.5">
+                    <span>نظام العلامة المائية واللوجو التلقائي لصور المنتجات:</span>
+                    <span className={`px-2 py-0.5 rounded-md text-[10px] font-black ${autoWatermark ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-100 text-stone-600'}`}>
+                      {autoWatermark ? 'مفعّل تلقائياً ✓' : 'معطّل'}
+                    </span>
+                  </h4>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    يضع لوجو المتجر الفاخر (Fashion Zone | BOUTIQUE ✨) تلقائياً عند رفع الصور لحمايتها من السرقة. يظهر في نافذتي <strong>«إضافة منتج جديد»</strong> و <strong>«تعديل المنتج»</strong>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3 bg-white/80 p-1.5 px-3 rounded-xl border border-pink-200">
+                <label className="flex items-center gap-2 cursor-pointer font-bold text-stone-800">
+                  <input
+                    type="checkbox"
+                    checked={autoWatermark}
+                    onChange={(e) => setAutoWatermark(e.target.checked)}
+                    className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-500 accent-rose-600"
+                  />
+                  <span>وضع اللوجو على الصور</span>
+                </label>
+
+                {autoWatermark && (
+                  <div className="flex items-center gap-1.5 text-[11px] border-r border-pink-200 pr-3 mr-1">
+                    <span className="text-stone-500 font-medium">الموضع:</span>
+                    <select
+                      value={watermarkPosition}
+                      onChange={(e) => setWatermarkPosition(e.target.value as any)}
+                      className="bg-pink-50/60 px-2 py-1 rounded-lg border border-pink-200 text-stone-800 font-bold focus:outline-none"
+                    >
+                      <option value="bottom-right">أسفل اليمين</option>
+                      <option value="bottom-left">أسفل اليسار</option>
+                      <option value="center">في المنتصف</option>
+                    </select>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* WhatsApp Smart Importer Modal */}
             {showWhatsAppImporter && (
               <div className="fixed inset-0 z-[120] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -3116,6 +3163,33 @@ export default function AdminPage() {
                         )}
                       </div>
 
+                      {/* Watermark & Brand Logo Bar */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-white rounded-xl border border-pink-200 text-xs shadow-2xs">
+                        <label className="flex items-center gap-2 cursor-pointer font-bold text-stone-800">
+                          <input
+                            type="checkbox"
+                            checked={autoWatermark}
+                            onChange={(e) => setAutoWatermark(e.target.checked)}
+                            className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-500 accent-rose-600"
+                          />
+                          <span>✨ وضع لوجو وعلامة مائية Fashion Zone تلقائياً على الصور</span>
+                        </label>
+                        {autoWatermark && (
+                          <div className="flex items-center gap-1.5 text-[11px]">
+                            <span className="text-stone-500 font-medium">موضع اللوجو:</span>
+                            <select
+                              value={watermarkPosition}
+                              onChange={(e) => setWatermarkPosition(e.target.value as any)}
+                              className="bg-pink-50/50 px-2.5 py-1 rounded-lg border border-pink-200 text-stone-800 font-bold focus:outline-none"
+                            >
+                              <option value="bottom-right">أسفل اليمين</option>
+                              <option value="bottom-left">أسفل اليسار</option>
+                              <option value="center">في المنتصف</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
+
                       {/* Images Grid */}
                       <div className="flex flex-wrap gap-3 items-center min-h-[110px] p-2.5 bg-white rounded-xl border border-pink-100">
                         {editProdImages.map((img, idx) => (
@@ -3144,6 +3218,16 @@ export default function AdminPage() {
                                 جعلها رئيسية ⭐
                               </button>
                             )}
+
+                            {/* Apply Watermark Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleApplyWatermarkToExistingImage(img, idx, true)}
+                              className="absolute bottom-1 left-1 bg-stone-900/85 hover:bg-rose-600 text-white text-[9px] font-bold px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition z-10 shadow-xs flex items-center gap-0.5"
+                              title="تطبيق لوجو وعلامة Fashion Zone على هذه الصورة"
+                            >
+                              <span>✨ لوجو</span>
+                            </button>
 
                             {/* Delete image button */}
                             <button
