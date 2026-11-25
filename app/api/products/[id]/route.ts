@@ -1,12 +1,18 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyAdmin } from '@/lib/auth';
 
-// DELETE /api/products/[id] - حذف منتج من MySQL
+// DELETE /api/products/[id] - حذف منتج من MySQL (خاص بالمدير)
 export async function DELETE(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     await prisma.product.delete({
       where: { id: params.id },
     });
@@ -20,12 +26,17 @@ export async function DELETE(
   }
 }
 
-// PATCH /api/products/[id] - تحديث توفر المنتج أو سعره أو بياناته والمقاسات
+// PATCH /api/products/[id] - تحديث توفر المنتج أو سعره أو بياناته والمقاسات (خاص بالمدير)
 export async function PATCH(
   request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const body = await request.json();
     const dataToUpdate: any = {};
     

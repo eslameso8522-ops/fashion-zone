@@ -58,6 +58,7 @@ export default function TrackPage() {
   const [whatsappNumber, setWhatsappNumber] = useState('201000000000');
 
   useEffect(() => {
+    document.title = 'تتبع الطلب والشحنة | Fashion Zone';
     fetch('/api/settings')
       .then((res) => res.json())
       .then((data) => {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyAdmin } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,12 @@ export async function GET(request: Request) {
       });
     }
 
-    // 2. Admin: Get all coupons
+    // 2. Admin: Get all coupons (خاص بالمدير)
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const coupons = await prisma.coupon.findMany({
       orderBy: { createdAt: 'desc' },
     });
@@ -93,9 +99,14 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/coupons - إنشاء كود خصم جديد للإدارة
+// POST /api/coupons - إنشاء كود خصم جديد للإدارة (خاص بالمدير)
 export async function POST(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const body = await request.json();
     const {
       code,
@@ -153,9 +164,14 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH /api/coupons - تعديل الكوبون أو تفعيله/تعطيله
+// PATCH /api/coupons - تعديل الكوبون أو تفعيله/تعطيله (خاص بالمدير)
 export async function PATCH(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const body = await request.json();
     const { id, isActive, discountValue, description } = body;
 
@@ -183,9 +199,14 @@ export async function PATCH(request: Request) {
   }
 }
 
-// DELETE /api/coupons - حذف الكوبون
+// DELETE /api/coupons - حذف الكوبون (خاص بالمدير)
 export async function DELETE(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

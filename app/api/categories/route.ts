@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyAdmin } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,9 +48,14 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/categories - إنشاء قسم جديد من لوحة التحكم
+// POST /api/categories - إنشاء قسم جديد من لوحة التحكم (خاص بالمدير)
 export async function POST(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const body = await request.json();
     const { name, image, showInNavbar } = body;
 
@@ -89,9 +95,14 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH /api/categories - تعديل القسم (الاسم، الصورة، أو الظهور في الناف بار)
+// PATCH /api/categories - تعديل القسم (الاسم، الصورة، أو الظهور في الناف بار) (خاص بالمدير)
 export async function PATCH(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const body = await request.json();
     const { id, name, image, showInNavbar, orderIndex } = body;
 
@@ -116,9 +127,14 @@ export async function PATCH(request: Request) {
   }
 }
 
-// DELETE /api/categories - حذف قسم
+// DELETE /api/categories - حذف قسم (خاص بالمدير)
 export async function DELETE(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

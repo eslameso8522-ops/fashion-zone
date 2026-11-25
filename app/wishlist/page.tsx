@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { Heart, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/lib/cartContext';
@@ -9,6 +9,10 @@ import ProductCard from '@/components/ProductCard';
 
 export default function WishlistPage() {
   const { wishlist } = useCart();
+
+  useEffect(() => {
+    document.title = 'قائمة المفضلة والأمنيات | Fashion Zone';
+  }, []);
 
   const favoriteProducts = PRODUCTS.filter((p) => wishlist.includes(p.id));
 

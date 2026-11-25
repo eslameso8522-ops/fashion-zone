@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyAdmin } from '@/lib/auth';
 
-// GET /api/orders - جلب سجل الطلبات للإدارة
-export async function GET() {
+// GET /api/orders - جلب سجل الطلبات للإدارة (خاص بالمدير)
+export async function GET(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const orders = await prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
     });
@@ -17,23 +23,32 @@ export async function GET() {
   }
 }
 
-// POST /api/orders - تسجيل طلب جديد في قاعدة بيانات MySQL
+// POST /api/orders - تسجيل طلب جديد في قاعدة بيانات MySQL (متاح للعملاء مع التحقق من صحة المدخلات)
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { customerName, customerPhone, customerAddress, items, total, notes } = body;
+    const { customerName, customerPhone, customerAddress, items, total, notes, couponCode, discountAmount } = body;
+
+    // Validate inputs
+    const cleanName = (typeof customerName === 'string' ? customerName : 'عميلة متجر').trim().slice(0, 100);
+    const cleanPhone = (typeof customerPhone === 'string' ? customerPhone : '').trim().slice(0, 30);
+    const cleanAddress = (typeof customerAddress === 'string' ? customerAddress : '').trim().slice(0, 300);
+    const cleanNotes = (typeof notes === 'string' ? notes : '').trim().slice(0, 500);
+    const parsedTotal = Math.max(0, parseFloat(total) || 0);
 
     const orderNumber = `FZ-${Date.now().toString().slice(-6)}`;
 
     const order = await prisma.order.create({
       data: {
         orderNumber,
-        customerName: customerName || 'عميلة واتساب',
-        customerPhone: customerPhone || 'غير مسجل',
-        customerAddress: customerAddress || 'سيتم تأكيده عبر الشات',
-        items: items || [],
-        total: parseFloat(total) || 0,
-        notes: notes || null,
+        customerName: cleanName || 'عميلة متجر',
+        customerPhone: cleanPhone || 'غير مسجل',
+        customerAddress: cleanAddress || 'سيتم تأكيده عبر الواتساب',
+        items: Array.isArray(items) ? items : [],
+        total: parsedTotal,
+        notes: cleanNotes || null,
+        couponCode: couponCode ? String(couponCode).toUpperCase().trim().slice(0, 30) : null,
+        discountAmount: discountAmount ? Math.max(0, parseFloat(discountAmount) || 0) : undefined,
         status: 'PENDING',
       },
     });
@@ -48,9 +63,14 @@ export async function POST(request: Request) {
   }
 }
 
-// PATCH /api/orders - تحديث بيانات الطلب بالكامل أو حالته
+// PATCH /api/orders - تحديث بيانات الطلب بالكامل أو حالته (خاص بالمدير)
 export async function PATCH(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const body = await request.json();
     const {
       id,
@@ -97,9 +117,14 @@ export async function PATCH(request: Request) {
   }
 }
 
-// DELETE /api/orders - حذف طلب محدد أو مسح سجل الطلبات
+// DELETE /api/orders - حذف طلب محدد أو مسح سجل الطلبات (خاص بالمدير)
 export async function DELETE(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -107,6 +132,13 @@ export async function DELETE(request: Request) {
       await prisma.order.delete({ where: { id } });
       return NextResponse.json({ success: true, message: 'تم حذف الطلب بنجاح' });
     } else {
+      const confirmWipe = searchParams.get('confirm') === 'wipe_all_orders_confirmed';
+      if (!confirmWipe) {
+        return NextResponse.json(
+          { success: false, error: 'لمسح جميع الطلبات يجب تأكيد العملية بوضوح' },
+          { status: 400 }
+        );
+      }
       const deleted = await prisma.order.deleteMany({});
       return NextResponse.json({ success: true, count: deleted.count, message: 'تم مسح سجل الطلبات بنجاح' });
     }

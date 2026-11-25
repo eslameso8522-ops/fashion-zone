@@ -8,23 +8,48 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const rawQuery = searchParams.get('query')?.trim() || '';
 
-    if (!rawQuery) {
+    if (!rawQuery || rawQuery.length < 6) {
       return NextResponse.json(
-        { success: false, error: 'يرجى إدخال كود الطلب (مثل FZ-123456) أو رقم الهاتف المسجل به' },
+        {
+          success: false,
+          error: 'يرجى إدخال كود الطلب بالكامل (مثال: FZ-123456) أو رقم الهاتف المكون من 11 رقماً للبحث.',
+        },
         { status: 400 }
       );
     }
 
     const upperQuery = rawQuery.toUpperCase();
+    const cleanDigits = rawQuery.replace(/[^0-9]/g, '');
+
+    const whereConditions: any[] = [
+      { orderNumber: upperQuery },
+    ];
+
+    // If query contains at least 9 numeric digits, allow exact phone lookup
+    if (cleanDigits.length >= 9) {
+      whereConditions.push({ customerPhone: cleanDigits });
+      whereConditions.push({ customerPhone: `+2${cleanDigits}` });
+      whereConditions.push({ customerPhone: `0${cleanDigits.replace(/^0+/, '')}` });
+    }
 
     // Query MySQL TiDB
     const orders = await prisma.order.findMany({
       where: {
-        OR: [
-          { orderNumber: upperQuery },
-          { orderNumber: { contains: rawQuery } },
-          { customerPhone: { contains: rawQuery } },
-        ],
+        OR: whereConditions,
+      },
+      select: {
+        id: true,
+        orderNumber: true,
+        status: true,
+        trackingNumber: true,
+        customerName: true,
+        customerPhone: true,
+        customerAddress: true,
+        total: true,
+        items: true,
+        couponCode: true,
+        discountAmount: true,
+        createdAt: true,
       },
       orderBy: { createdAt: 'desc' },
       take: 5,
@@ -34,7 +59,7 @@ export async function GET(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: 'لم نتمكن من العثور على طلب بهذا الرقم. تأكدي من كتابة كود الطلب بالكامل (مثال: FZ-123456) أو رقم الهاتف المسجل.',
+          error: 'لم نتمكن من العثور على طلب بهذا الرقم. تأكدي من كتابة كود الطلب بالكامل (مثال: FZ-123456) أو رقم الهاتف المسجل به الطلب.',
         },
         { status: 404 }
       );

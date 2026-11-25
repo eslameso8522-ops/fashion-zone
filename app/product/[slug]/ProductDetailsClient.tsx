@@ -39,6 +39,7 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
   const [watermarkEnabled, setWatermarkEnabled] = useState(true);
   const [watermarkPos, setWatermarkPos] = useState<'bottom-right' | 'bottom-left' | 'center'>('bottom-right');
   const [bundleAdded, setBundleAdded] = useState(false);
+  const [storeWhatsapp, setStoreWhatsapp] = useState('201080441559');
 
   // Flash Sale Live Timer state
   const [timeLeft, setTimeLeft] = useState({ hours: 4, minutes: 28, seconds: 45 });
@@ -59,6 +60,9 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
       .then((res) => res.json())
       .then((data) => {
         if (data.success && data.settings) {
+          if (data.settings.whatsappNumber) {
+            setStoreWhatsapp(data.settings.whatsappNumber);
+          }
           if (data.settings.watermarkEnabled !== undefined) {
             setWatermarkEnabled(Boolean(data.settings.watermarkEnabled));
           }
@@ -616,6 +620,7 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
       {quickOrderOpen && (
         <QuickOrderModal
           product={product}
+          whatsappNumber={storeWhatsapp}
           onClose={() => setQuickOrderOpen(false)}
         />
       )}
@@ -625,6 +630,7 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
           onClose={() => setSizeGuideOpen(false)}
           onSelectSize={(sz) => setSelectedSize(sz)}
           availableSizes={product.sizes}
+          whatsappNumber={storeWhatsapp}
         />
       )}
     </div>

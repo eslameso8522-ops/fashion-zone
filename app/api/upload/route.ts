@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server';
 import cloudinary from '@/lib/cloudinary';
+import { verifyAdmin } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 

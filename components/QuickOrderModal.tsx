@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { X, MessageCircle, Sparkles, CheckCircle2, Truck, ShieldCheck, MapPin } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -9,6 +9,7 @@ import { Product } from '@/lib/types';
 interface QuickOrderModalProps {
   product: Product;
   onClose: () => void;
+  whatsappNumber?: string;
 }
 
 const EGYPT_GOVERNORATES = [
@@ -30,13 +31,29 @@ const EGYPT_GOVERNORATES = [
   { name: 'مرسى مطروح والساحل الشمالي', fee: 75, time: 'خلال 3-5 أيام' },
 ];
 
-export default function QuickOrderModal({ product, onClose }: QuickOrderModalProps) {
+export default function QuickOrderModal({ product, onClose, whatsappNumber }: QuickOrderModalProps) {
   const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] || '');
   const [selectedColor, setSelectedColor] = useState(product.colors?.[0]?.name || '');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [addressDetails, setAddressDetails] = useState('');
   const [selectedGovIndex, setSelectedGovIndex] = useState(0);
+  const [activeWhatsappNumber, setActiveWhatsappNumber] = useState(
+    whatsappNumber || process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '201080441559'
+  );
+
+  useEffect(() => {
+    if (!whatsappNumber) {
+      fetch('/api/settings')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.settings?.whatsappNumber) {
+            setActiveWhatsappNumber(data.settings.whatsappNumber);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [whatsappNumber]);
 
   const selectedGov = EGYPT_GOVERNORATES[selectedGovIndex];
   const isFreeShipping = product.price >= 750;
@@ -84,8 +101,6 @@ export default function QuickOrderModal({ product, onClose }: QuickOrderModalPro
       }).catch(console.error);
     } catch {}
 
-    const storeWhatsAppNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '201080441559';
-
     const orderMessage = `*طلب شراء جديد من متجر Fashion Zone 🛍️✨*
 -----------------------------
 👗 *الموديل:* ${product.name} ${product.code ? `[كود: #${product.code}]` : ''}
@@ -100,7 +115,7 @@ export default function QuickOrderModal({ product, onClose }: QuickOrderModalPro
 ✨ _الدفع كاش عند الاستلام مع إمكانية المعاينة والتأكد من الخامة قبل الدفع._
 🔗 *رابط الموديل:* ${typeof window !== 'undefined' ? window.location.origin : ''}/product/${product.slug}`;
 
-    const url = `https://wa.me/${storeWhatsAppNumber}?text=${encodeURIComponent(orderMessage)}`;
+    const url = `https://wa.me/${activeWhatsappNumber.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(orderMessage)}`;
     window.open(url, '_blank');
     onClose();
   };

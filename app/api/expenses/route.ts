@@ -1,9 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { verifyAdmin } from '@/lib/auth';
 
-// GET /api/expenses - جلب قائمة المصروفات
+// GET /api/expenses - جلب قائمة المصروفات (خاص بالمدير)
 export async function GET(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const expenses = await prisma.expense.findMany({
       orderBy: { date: 'desc' },
     });
@@ -17,9 +23,14 @@ export async function GET(request: Request) {
   }
 }
 
-// POST /api/expenses - إضافة مصروف جديد
+// POST /api/expenses - إضافة مصروف جديد (خاص بالمدير)
 export async function POST(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const body = await request.json();
     const { title, category, amount, notes, date } = body;
 
@@ -50,9 +61,14 @@ export async function POST(request: Request) {
   }
 }
 
-// DELETE /api/expenses - حذف مصروف
+// DELETE /api/expenses - حذف مصروف (خاص بالمدير)
 export async function DELETE(request: Request) {
   try {
+    const auth = await verifyAdmin(request);
+    if (!auth.authorized) {
+      return auth.errorResponse!;
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

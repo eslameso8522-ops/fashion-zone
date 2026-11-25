@@ -45,6 +45,7 @@ export default function CartPage() {
   const [whatsappNumber, setWhatsappNumber] = useState('201000000000');
 
   useEffect(() => {
+    document.title = 'سلة المشتريات | Fashion Zone';
     fetch('/api/settings')
       .then((res) => res.json())
       .then((data) => {

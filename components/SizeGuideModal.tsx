@@ -1,16 +1,31 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { X, Ruler, Sparkles, Check, Calculator, HelpCircle, ArrowLeft } from 'lucide-react';
 
 interface SizeGuideModalProps {
   onClose: () => void;
   onSelectSize?: (size: string) => void;
   availableSizes?: string[];
+  whatsappNumber?: string;
 }
 
-export default function SizeGuideModal({ onClose, onSelectSize, availableSizes = [] }: SizeGuideModalProps) {
+export default function SizeGuideModal({ onClose, onSelectSize, availableSizes = [], whatsappNumber }: SizeGuideModalProps) {
   const [activeTab, setActiveTab] = useState<'calculator' | 'chart'>('calculator');
+  const [activePhone, setActivePhone] = useState(whatsappNumber || '201080441559');
+
+  useEffect(() => {
+    if (!whatsappNumber) {
+      fetch('/api/settings')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.settings?.whatsappNumber) {
+            setActivePhone(data.settings.whatsappNumber);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [whatsappNumber]);
 
   // Calculator inputs
   const [weight, setWeight] = useState<number>(65);
@@ -320,7 +335,7 @@ export default function SizeGuideModal({ onClose, onSelectSize, availableSizes =
           <div className="bg-pink-50 p-3 rounded-2xl border border-pink-200 text-xs text-rose-800 flex items-center justify-between gap-2">
             <span>محتارة أو محتاجة مساعدة خاصة؟</span>
             <a
-              href="https://wa.me/201080441559?text=مرحباً%20Fashion%20Zone%20أحتاج%20مساعدة%20في%20اختيار%20المقاس%20المناسب"
+              href={`https://wa.me/${activePhone}?text=${encodeURIComponent('مرحباً Fashion Zone أحتاج مساعدة في اختيار المقاس المناسب')}`}
               target="_blank"
               rel="noopener noreferrer"
               className="font-bold underline text-rose-600 hover:text-rose-800 whitespace-nowrap"
