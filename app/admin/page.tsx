@@ -43,6 +43,7 @@ import {
   Calculator,
   Palette,
   Image as ImageIcon,
+  Printer,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { applyWatermarkToFile } from '@/lib/watermark';
@@ -286,6 +287,9 @@ export default function AdminPage() {
   const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
   const [productStockFilter, setProductStockFilter] = useState<'ALL' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'NEW_ARRIVALS'>('ALL');
   const [copiedProductId, setCopiedProductId] = useState<string | null>(null);
+
+  // Printing thermal waybill modal state
+  const [printingOrder, setPrintingOrder] = useState<OrderItem | null>(null);
 
   // Settings saving state
   const [savingSettings, setSavingSettings] = useState(false);
@@ -4516,6 +4520,16 @@ export default function AdminPage() {
 
                           <div className="flex items-center gap-2">
                             <button
+                              type="button"
+                              onClick={() => setPrintingOrder(order)}
+                              className="inline-flex items-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold px-3 py-2 rounded-xl transition text-xs border border-blue-200 cursor-pointer"
+                              title="طباعة بوليصة الشحن الحرارية للمندوب"
+                            >
+                              <Printer className="w-3.5 h-3.5" />
+                              <span>طباعة البوليصة 🖨️</span>
+                            </button>
+
+                            <button
                               onClick={() => handleStartEditOrder(order)}
                               className="inline-flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold px-3 py-2 rounded-xl transition text-xs border border-pink-200"
                               title="تعديل بيانات الطلب والقطع والمقاسات"
@@ -4898,6 +4912,151 @@ export default function AdminPage() {
                       </button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+            {/* Printable Thermal Waybill Modal */}
+            {printingOrder && (
+              <div className="fixed inset-0 z-[150] bg-black/75 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto animate-fadeIn">
+                <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 my-8 space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                    <div className="flex items-center gap-2">
+                      <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                        <Printer className="w-4 h-4" />
+                      </span>
+                      <h3 className="font-bold text-base text-stone-900">معاينة وطباعة بوليصة الشحن للمندوب</h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setPrintingOrder(null)}
+                      className="p-1 rounded-full text-stone-400 hover:text-stone-600 hover:bg-stone-100"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* The Waybill Paper (Styled for Thermal / A6 / A4 Label Printing) */}
+                  <div id="printable-waybill" className="p-5 bg-white border-2 border-dashed border-stone-300 rounded-2xl text-stone-900 space-y-4 font-sans text-xs">
+                    
+                    {/* Header */}
+                    <div className="flex items-center justify-between pb-3 border-b-2 border-stone-900">
+                      <div>
+                        <h2 className="text-lg font-black tracking-wider uppercase font-serif text-stone-900">
+                          Fashion Zone | BOUTIQUE ✨
+                        </h2>
+                        <p className="text-[10px] text-stone-600 font-bold">متجر الأزياء النسائية والهوم وير الراقي</p>
+                        <p className="text-[10px] font-mono text-stone-500">واتساب: +20 108 044 1559</p>
+                      </div>
+                      <div className="text-left">
+                        <span className="block text-[10px] text-stone-500">رقم بوليصة الطلب:</span>
+                        <span className="font-mono font-black text-base text-stone-900 block bg-stone-100 px-2 py-0.5 rounded border border-stone-300">
+                          #{printingOrder.orderNumber}
+                        </span>
+                        <span className="text-[9px] text-stone-400 font-mono block mt-0.5">
+                          {new Date(printingOrder.createdAt).toLocaleDateString('ar-EG')}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Barcode Simulator */}
+                    <div className="text-center py-1 bg-stone-50 rounded border border-stone-200">
+                      <div className="font-mono tracking-[0.35em] text-lg font-black select-none text-stone-800">
+                        ||| | |||| | ||||| ||| ||||
+                      </div>
+                      <span className="text-[9px] font-mono font-bold text-stone-500 block">
+                        *FZ-{printingOrder.orderNumber}*
+                      </span>
+                    </div>
+
+                    {/* Customer Info Box */}
+                    <div className="bg-stone-50 p-3 rounded-xl border border-stone-200 space-y-1">
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-stone-500 text-[10px]">العميلة المستلمة:</span>
+                        <span className="font-black text-stone-900 text-sm">{printingOrder.customerName}</span>
+                      </div>
+                      <div className="flex justify-between items-baseline">
+                        <span className="text-stone-500 text-[10px]">رقم هاتف العميلة:</span>
+                        <span className="font-mono font-black text-stone-900 text-sm dir-ltr">{printingOrder.customerPhone}</span>
+                      </div>
+                      <div className="pt-1 border-t border-stone-200">
+                        <span className="text-stone-500 text-[10px] block mb-0.5">عنوان التوصيل:</span>
+                        <p className="font-bold text-stone-900 leading-relaxed text-xs">{printingOrder.customerAddress}</p>
+                      </div>
+                    </div>
+
+                    {/* Items List */}
+                    <div>
+                      <span className="text-[10px] font-bold text-stone-500 block mb-1">محتويات الطرد:</span>
+                      <table className="w-full text-right text-[11px] border border-stone-200 rounded-lg overflow-hidden">
+                        <thead className="bg-stone-100 text-stone-700 font-bold">
+                          <tr>
+                            <th className="py-1 px-2 border-b">الموديل</th>
+                            <th className="py-1 px-2 border-b text-center">المقاس / اللون</th>
+                            <th className="py-1 px-2 border-b text-center">الكمية</th>
+                            <th className="py-1 px-2 border-b text-left">السعر</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-100">
+                          {Array.isArray(printingOrder.items) && printingOrder.items.map((it: any, i: number) => (
+                            <tr key={i}>
+                              <td className="py-1.5 px-2 font-bold text-stone-800">
+                                {it.name || it.productName}
+                                {it.code && <span className="text-[9px] font-mono text-stone-500 mr-1">(#{it.code})</span>}
+                              </td>
+                              <td className="py-1.5 px-2 text-center text-stone-600 font-bold">
+                                {it.size || '-'} {it.color ? `/ ${it.color}` : ''}
+                              </td>
+                              <td className="py-1.5 px-2 text-center font-mono font-bold">{it.quantity || 1}</td>
+                              <td className="py-1.5 px-2 text-left font-mono font-bold">{(it.price || 0) * (it.quantity || 1)} ج.م</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* COD Collection Box (Cash on Delivery) */}
+                    <div className="p-3.5 rounded-xl bg-stone-900 text-white flex items-center justify-between border-2 border-black">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-stone-300 block">
+                          المبلغ المطلوب تحصيله بواسطة المندوب:
+                        </span>
+                        <span className="text-xl font-black font-sans text-emerald-400">
+                          {printingOrder.total} جنيه مصري
+                        </span>
+                      </div>
+                      <div className="text-left text-[10px] text-stone-300">
+                        <span className="block font-bold">دفع كاش عند الاستلام</span>
+                        <span>شامل مصاريف الشحن ✓</span>
+                      </div>
+                    </div>
+
+                    {/* Courier Instructions */}
+                    <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-[10px] leading-relaxed">
+                      ⚠️ <strong>تعليمات المندوب:</strong> يُسمح للعميلة بالمعاينة والتأكد من خامة ومقاس الموديل قبل الدفع. في حال الرغبة في الاستبدال يرجى التواصل مع إدارة المتجر فوراً.
+                    </div>
+
+                  </div>
+
+                  {/* Print Actions */}
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setPrintingOrder(null)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold text-stone-600 hover:bg-stone-100"
+                    >
+                      إغلاق المعاينة
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        window.print();
+                      }}
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs px-6 py-2.5 rounded-xl shadow-md transition flex items-center gap-2 cursor-pointer"
+                    >
+                      <Printer className="w-4 h-4" />
+                      <span>طباعة البوليصة فوراً (Print) 🖨️</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

@@ -7,11 +7,31 @@ import { ShoppingBag, Trash2, ArrowLeft, MessageCircle, Sparkles, CheckCircle2, 
 import confetti from 'canvas-confetti';
 import { useCart } from '@/lib/cartContext';
 
+const EGYPT_GOVERNORATES = [
+  { name: 'القاهرة', fee: 45, time: 'خلال 24-48 ساعة ⚡' },
+  { name: 'الجيزة', fee: 45, time: 'خلال 24-48 ساعة ⚡' },
+  { name: 'الإسكندرية', fee: 55, time: 'خلال 48 ساعة' },
+  { name: 'القليوبية / بنها', fee: 50, time: 'خلال 48 ساعة' },
+  { name: 'الدقهلية / المنصورة', fee: 55, time: 'خلال 2-3 أيام' },
+  { name: 'الغربية / طنطا', fee: 55, time: 'خلال 2-3 أيام' },
+  { name: 'الشرقية / الزقازيق', fee: 55, time: 'خلال 2-3 أيام' },
+  { name: 'المنوفية', fee: 55, time: 'خلال 2-3 أيام' },
+  { name: 'البحيرة / دمنهور', fee: 55, time: 'خلال 2-3 أيام' },
+  { name: 'دمياط وكفر الشيخ', fee: 55, time: 'خلال 2-3 أيام' },
+  { name: 'مدن القناة (بورسعيد / الإسماعيلية / السويس)', fee: 60, time: 'خلال 2-3 أيام' },
+  { name: 'الفيوم وبني سويف', fee: 60, time: 'خلال 2-3 أيام' },
+  { name: 'المنيا وأسيوط وسوهاج', fee: 65, time: 'خلال 3-4 أيام' },
+  { name: 'قنا والأقصر وأسوان', fee: 70, time: 'خلال 3-5 أيام' },
+  { name: 'البحر الأحمر والغردقة', fee: 75, time: 'خلال 3-5 أيام' },
+  { name: 'مرسى مطروح والساحل الشمالي', fee: 75, time: 'خلال 3-5 أيام' },
+];
+
 export default function CartPage() {
   const { cart, removeFromCart, updateQuantity, clearCart, cartTotal, cartCount } = useCart();
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerAddress, setCustomerAddress] = useState('');
+  const [selectedGovIndex, setSelectedGovIndex] = useState(0);
 
   // Coupon state
   const [couponCodeInput, setCouponCodeInput] = useState('');
@@ -37,7 +57,8 @@ export default function CartPage() {
 
   const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
   const discountedSubtotal = Math.max(0, cartTotal - discountAmount);
-  const shippingFee = discountedSubtotal >= 500 || cartTotal === 0 ? 0 : 50;
+  const selectedGov = EGYPT_GOVERNORATES[selectedGovIndex] || EGYPT_GOVERNORATES[0];
+  const shippingFee = discountedSubtotal >= 500 || cartTotal === 0 ? 0 : selectedGov.fee;
   const grandTotal = discountedSubtotal + shippingFee;
 
   // Apply Coupon
@@ -89,6 +110,8 @@ export default function CartPage() {
       });
     } catch {}
 
+    const fullCustomerAddress = `${selectedGov.name} - ${customerAddress.trim()}`;
+
     // Save order in MySQL database
     try {
       fetch('/api/orders', {
@@ -97,7 +120,7 @@ export default function CartPage() {
         body: JSON.stringify({
           customerName,
           customerPhone,
-          customerAddress,
+          customerAddress: fullCustomerAddress,
           items: cart.map((item) => ({
             productId: item.product.id,
             name: item.product.name,
@@ -110,7 +133,7 @@ export default function CartPage() {
           total: grandTotal,
           discountAmount: discountAmount,
           couponCode: appliedCoupon?.code || null,
-          notes: `طلب سلة مشتريات (${cartCount} قطع)${
+          notes: `طلب سلة مشتريات (${cartCount} قطع) - المحافظة: ${selectedGov.name}${
             appliedCoupon ? ` - كود خصم: ${appliedCoupon.code} (وفّر: ${discountAmount} ج.م)` : ''
           } - الشحن: ${shippingFee} جنيه`,
         }),
@@ -132,20 +155,20 @@ export default function CartPage() {
       ? `🎟️ *كود الخصم المطبق:* ${appliedCoupon.code} (-${discountAmount} جنيه)\n`
       : '';
 
-    const orderMessage = `*طلب شراء جديد من متجر Fashion Zone 🛍️*
+    const orderMessage = `*طلب شراء جديد من متجر Fashion Zone 🛍️✨*
 -----------------------------
 👤 *اسم العميلة:* ${customerName}
 📱 *رقم الهاتف:* ${customerPhone}
-📍 *العنوان:* ${customerAddress}
+📍 *العنوان:* ${fullCustomerAddress}
+🚚 *الشحن (${selectedGov.name}):* ${shippingFee === 0 ? 'مجاني 🎉' : `${shippingFee} جنيه`} (${selectedGov.time})
 -----------------------------
 📋 *المنتجات المطلوبة:*
 ${itemsSummary}
 -----------------------------
 💰 *إجمالي المنتجات:* ${cartTotal} جنيه
-${couponLine}🚚 *الشحن:* ${shippingFee === 0 ? 'مجاني 🎉' : `${shippingFee} جنيه`}
-💎 *المبلغ الإجمالي المستحق:* ${grandTotal} جنيه
+${couponLine}💎 *المبلغ الإجمالي المستحق عند الاستلام:* ${grandTotal} جنيه
 -----------------------------
-_الدفع عند الاستلام بعد المعاينة_`;
+_الدفع كاش عند الاستلام بعد المعاينة_`;
 
     const url = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(orderMessage)}`;
     window.open(url, '_blank');
@@ -430,12 +453,29 @@ _الدفع عند الاستلام بعد المعاينة_`;
 
             <div>
               <label className="block text-xs font-bold text-stone-700 mb-1">
-                عنوان التوصيل بالتفصيل:
+                المحافظة (لحساب مصاريف الشحن وموعد التوصيل):
+              </label>
+              <select
+                value={selectedGovIndex}
+                onChange={(e) => setSelectedGovIndex(Number(e.target.value))}
+                className="w-full text-xs font-bold px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/30 text-stone-800"
+              >
+                {EGYPT_GOVERNORATES.map((gov, idx) => (
+                  <option key={gov.name} value={idx}>
+                    {gov.name} — {discountedSubtotal >= 500 ? 'شحن مجاني 🎉' : `${gov.fee} ج.م`} ({gov.time})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-stone-700 mb-1">
+                العنوان بالتفصيل (المدينة، الشارع، رقم العمارة):
               </label>
               <textarea
                 rows={2}
                 required
-                placeholder="المحافظة، المدينة، اسم الشارع، رقم العمارة والشقة..."
+                placeholder="اسم المدينة، الشارع، رقم العمارة والشقة..."
                 value={customerAddress}
                 onChange={(e) => setCustomerAddress(e.target.value)}
                 className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-pink-50/20"

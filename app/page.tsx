@@ -3,15 +3,78 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Sparkles, ArrowLeft, Heart, ShoppingBag, ShieldCheck, Truck, Star } from 'lucide-react';
+import { Sparkles, ArrowLeft, Heart, ShoppingBag, ShieldCheck, Truck, Star, Play, Video, Flame, Clock, CheckCircle2, X } from 'lucide-react';
 import { CATEGORIES, PRODUCTS } from '@/lib/data';
 import { Product } from '@/lib/types';
 import ProductCard from '@/components/ProductCard';
+
+const FASHION_REELS = [
+  {
+    id: 'reel-1',
+    title: 'بيجامة هايدي زراير مطعمة فرو 😍',
+    code: '#2061',
+    views: '14.2K',
+    duration: '0:24',
+    thumbnail: 'https://res.cloudinary.com/p4abpsol/image/upload/v1795214686/fashion_zone_products/og1uxgytaio9nqh870cm.jpg',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-fashion-model-showing-off-a-dress-41551-large.mp4',
+    price: 650,
+    slug: '6268',
+  },
+  {
+    id: 'reel-2',
+    title: 'ترينج وسوت خروج ميلتون شتوي فاخر',
+    code: '#4102',
+    views: '18.9K',
+    duration: '0:31',
+    thumbnail: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=800&auto=format&fit=crop&q=80',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-young-woman-modelling-a-dress-in-a-studio-41549-large.mp4',
+    price: 720,
+    slug: '6268',
+  },
+  {
+    id: 'reel-3',
+    title: 'جاكت ووتر بروف مبطن فرو مستورد',
+    code: '#3095',
+    views: '22.4K',
+    duration: '0:28',
+    thumbnail: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=800&auto=format&fit=crop&q=80',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-woman-turning-around-in-a-dress-41550-large.mp4',
+    price: 890,
+    slug: '6268',
+  },
+  {
+    id: 'reel-4',
+    title: 'طقم بيجامة قطيفة شين فاخرة للمنزل',
+    code: '#1088',
+    views: '11.6K',
+    duration: '0:20',
+    thumbnail: 'https://images.unsplash.com/photo-1485968579580-b6d095142e6e?w=800&auto=format&fit=crop&q=80',
+    videoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-fashion-model-in-a-studio-41552-large.mp4',
+    price: 580,
+    slug: '6268',
+  },
+];
 
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [categories, setCategories] = useState(CATEGORIES);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'homewear' | 'featured' | 'sale'>('all');
+  const [activeReel, setActiveReel] = useState<any | null>(null);
+
+  // Live Flash Sale Countdown Timer
+  const [flashSaleTime, setFlashSaleTime] = useState({ hours: 5, minutes: 42, seconds: 18 });
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setFlashSaleTime((prev) => {
+        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
+        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
+        if (prev.hours > 0) return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        return { hours: 6, minutes: 0, seconds: 0 };
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [heroSettings, setHeroSettings] = useState({
     heroTitle: 'كوني الأجمل في كل إطلالة مع Fashion Zone',
     heroSubtitle: 'اكتشفي تشكيلة راقية ومختارة بعناية من فساتين السهرة الناعمة، العبايات المطرزة، الحقائب والمجوهرات التي تزيدكِ تألقاً وسحراً.',
@@ -362,6 +425,125 @@ export default function HomePage() {
       </section>
 
       {/* ========================================================
+          VIDEO REELS & REAL LIFE STORIES SHOWCASE (فيديوهات من الواقع)
+      ======================================================== */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between gap-3 mb-8">
+          <div>
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-500 mb-1">
+              <Video className="w-3.5 h-3.5" />
+              <span>فيديوهات حصرية من أرض الواقع</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-stone-900 font-serif">
+              شاهدي الموديلات على الطبيعة 🎥✨
+            </h2>
+          </div>
+          <p className="text-xs text-stone-500 max-w-sm">
+            تصوير حقيقي لخامات البيجامات والترينجات والجواكت الشتوية للتأكد من الملمس والفخامة قبل الشراء.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
+          {FASHION_REELS.map((reel) => (
+            <div
+              key={reel.id}
+              onClick={() => setActiveReel(reel)}
+              className="group relative aspect-[9/16] rounded-3xl overflow-hidden cursor-pointer shadow-lg hover:shadow-2xl transition-all duration-300 border-2 border-white hover:border-rose-400"
+            >
+              <Image
+                src={reel.thumbnail}
+                alt={reel.title}
+                fill
+                className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+              />
+
+              {/* Gradient Overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 group-hover:from-black/90 transition-colors" />
+
+              {/* Play Button Icon */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="w-12 h-12 rounded-full bg-white/90 backdrop-blur-md text-rose-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                  <Play className="w-5 h-5 fill-current ml-0.5" />
+                </span>
+              </div>
+
+              {/* Video Badge / Views */}
+              <div className="absolute top-3 right-3 flex items-center gap-1 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-bold">
+                <span>{reel.views} مشاهدة</span>
+              </div>
+
+              {/* Boutique Watermark Pill */}
+              <div className="absolute top-3 left-3 bg-white/80 backdrop-blur-xs px-2 py-0.5 rounded-lg text-[9px] font-black text-stone-900 font-serif">
+                Fashion Zone
+              </div>
+
+              {/* Bottom Caption & Price */}
+              <div className="absolute bottom-3 right-3 left-3 space-y-1 text-white">
+                <span className="text-[10px] font-mono text-pink-300 font-bold block">{reel.code}</span>
+                <h4 className="text-xs font-bold leading-snug line-clamp-2 drop-shadow-sm">{reel.title}</h4>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-sm font-black text-pink-300 font-sans">{reel.price} ج.م</span>
+                  <span className="text-[10px] bg-rose-500 text-white font-bold px-2 py-0.5 rounded-lg">
+                    معاينة 📹
+                  </span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ========================================================
+          WINTER FLASH SALE COUNTDOWN SECTION
+      ======================================================== */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-stone-900 via-rose-950 to-stone-900 text-white shadow-xl border border-rose-900/50 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="space-y-2 text-center md:text-right">
+            <div className="inline-flex items-center gap-2 bg-rose-500/30 text-pink-300 px-3 py-1 rounded-full text-xs font-bold border border-rose-500/40">
+              <Flame className="w-4 h-4 text-rose-400 fill-current animate-bounce" />
+              <span>عروض شتاء 2026 الحصرية (Flash Sale)</span>
+            </div>
+            <h3 className="text-xl sm:text-2xl font-black font-serif">
+              تخفيضات تصل إلى 35% على تشكيلة الهوم وير والخروج! 🔥
+            </h3>
+            <p className="text-xs text-stone-300 max-w-xl">
+              استمتعي بأقوى عروض الموسم مع شحن مجاني لكافة محافظات مصر عند طلب قطعتين أو أكثر.
+            </p>
+          </div>
+
+          <div className="flex flex-col items-center gap-3">
+            <span className="text-xs text-pink-200 font-bold flex items-center gap-1.5">
+              <Clock className="w-4 h-4" />
+              <span>ينتهي العرض المؤقت خلال:</span>
+            </span>
+            <div className="flex items-center gap-2 font-mono text-sm sm:text-base font-black">
+              <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20 text-center min-w-[54px]">
+                <span className="block text-rose-400">{String(flashSaleTime.hours).padStart(2, '0')}</span>
+                <span className="text-[9px] text-stone-400 font-sans block">ساعة</span>
+              </div>
+              <span className="text-rose-400 text-lg font-bold">:</span>
+              <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20 text-center min-w-[54px]">
+                <span className="block text-rose-400">{String(flashSaleTime.minutes).padStart(2, '0')}</span>
+                <span className="text-[9px] text-stone-400 font-sans block">دقيقة</span>
+              </div>
+              <span className="text-rose-400 text-lg font-bold">:</span>
+              <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20 text-center min-w-[54px]">
+                <span className="block text-rose-400">{String(flashSaleTime.seconds).padStart(2, '0')}</span>
+                <span className="text-[9px] text-stone-400 font-sans block">ثانية</span>
+              </div>
+            </div>
+            <a
+              href="#catalog"
+              onClick={() => setSelectedFilter('sale')}
+              className="mt-1 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold text-xs px-6 py-2.5 rounded-full shadow-md transition active:scale-95"
+            >
+              تسوقي عروض الفلاش سيل الآن ←
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
           FEATURED PRODUCTS CATALOG WITH TABS
       ======================================================== */}
       <section id="catalog" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 scroll-mt-24">
@@ -533,6 +715,66 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Video Reel Player Modal */}
+      {activeReel && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+          <div className="relative w-full max-w-sm aspect-[9/16] max-h-[90vh] bg-stone-900 rounded-3xl overflow-hidden shadow-2xl border border-white/20 flex flex-col justify-between">
+            {/* Top Bar */}
+            <div className="relative z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
+              <div className="flex items-center gap-2 text-white">
+                <span className="w-7 h-7 rounded-full bg-rose-500 flex items-center justify-center text-xs font-bold font-serif">
+                  FZ
+                </span>
+                <div>
+                  <h4 className="text-xs font-bold leading-tight truncate max-w-[180px]">{activeReel.title}</h4>
+                  <span className="text-[10px] text-pink-300 font-mono">{activeReel.code}</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveReel(null)}
+                className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Video / Visual Stream */}
+            <div className="absolute inset-0 w-full h-full">
+              <video
+                src={activeReel.videoUrl}
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="w-full h-full object-cover"
+              />
+            </div>
+
+            {/* Bottom Actions Overlay */}
+            <div className="relative z-10 p-5 bg-gradient-to-t from-black/90 via-black/40 to-transparent space-y-3">
+              <div className="flex items-baseline justify-between text-white">
+                <div>
+                  <span className="text-[11px] text-stone-300 block">سعر الموديل:</span>
+                  <span className="text-xl font-black text-pink-400 font-sans">{activeReel.price} ج.م</span>
+                </div>
+                <span className="text-[10px] bg-emerald-500/80 text-white font-bold px-2 py-0.5 rounded-full">
+                  متوفر بالمخزون ✓
+                </span>
+              </div>
+
+              <Link
+                href={`/product/${activeReel.slug}`}
+                onClick={() => setActiveReel(null)}
+                className="w-full py-3 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-black text-xs rounded-xl shadow-lg flex items-center justify-center gap-2 transition"
+              >
+                <span>طلب وشراء هذا الموديل الآن 🛍️</span>
+                <ArrowLeft className="w-4 h-4" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

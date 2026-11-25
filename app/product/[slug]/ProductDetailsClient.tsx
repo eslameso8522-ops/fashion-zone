@@ -38,6 +38,21 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
   const [zoomModalOpen, setZoomModalOpen] = useState(false);
   const [watermarkEnabled, setWatermarkEnabled] = useState(true);
   const [watermarkPos, setWatermarkPos] = useState<'bottom-right' | 'bottom-left' | 'center'>('bottom-right');
+  const [bundleAdded, setBundleAdded] = useState(false);
+
+  // Flash Sale Live Timer state
+  const [timeLeft, setTimeLeft] = useState({ hours: 4, minutes: 28, seconds: 45 });
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev.seconds > 0) return { ...prev, seconds: prev.seconds - 1 };
+        if (prev.minutes > 0) return { ...prev, minutes: 59, seconds: 59 };
+        if (prev.hours > 0) return { hours: prev.hours - 1, minutes: 59, seconds: 59 };
+        return { hours: 5, minutes: 30, seconds: 20 };
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     fetch('/api/settings')
@@ -239,6 +254,24 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
             )}
           </div>
 
+          {/* Flash Sale Urgency Countdown Timer */}
+          {discountPercent > 0 && (
+            <div className="p-3 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 text-white flex items-center justify-between shadow-xs animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <span className="text-base animate-bounce">🔥</span>
+                <div>
+                  <span className="text-xs font-black block">عرض شتاء 2026 الحصري</span>
+                  <span className="text-[10px] text-pink-100">سعر مخفض لفترة محدودة</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1 font-mono text-xs font-black bg-black/25 px-2.5 py-1 rounded-xl">
+                <span>{String(timeLeft.hours).padStart(2, '0')}</span>:
+                <span>{String(timeLeft.minutes).padStart(2, '0')}</span>:
+                <span>{String(timeLeft.seconds).padStart(2, '0')}</span>
+              </div>
+            </div>
+          )}
+
           {/* Color Selection */}
           {product.colors && product.colors.length > 0 && (
             <div className="space-y-2">
@@ -274,14 +307,23 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
                 <label className="text-xs font-bold text-stone-700">
                   المقاس المختار: <span className="text-rose-600 font-bold">{selectedSize}</span>
                 </label>
-                <button
-                  type="button"
-                  onClick={() => setSizeGuideOpen(true)}
-                  className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 underline"
-                >
-                  <Ruler className="w-3.5 h-3.5" />
-                  <span>جدول المقاسات</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSizeGuideOpen(true)}
+                    className="text-xs font-bold text-rose-600 bg-pink-50 hover:bg-pink-100 px-2.5 py-1 rounded-lg border border-pink-200 transition flex items-center gap-1 cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-rose-500" />
+                    <span>حاسبة المقاس الذكية</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSizeGuideOpen(true)}
+                    className="text-xs font-bold text-stone-500 hover:text-stone-700 underline"
+                  >
+                    جدول القياسات
+                  </button>
+                </div>
               </div>
 
               <div className="flex flex-wrap gap-2.5">
@@ -369,6 +411,50 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
               url={`/product/${product.slug}`}
               image={product.images[0]}
             />
+          </div>
+
+          {/* Shop The Look (نسقي إطلالتكِ كاملة) Upsell Card */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-50/80 via-rose-50/50 to-pink-50/80 border border-pink-200/90 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-rose-500" />
+                <span>نسقي إطلالتكِ كاملة (Shop The Look)</span>
+              </span>
+              <span className="text-[10px] font-black text-rose-700 bg-pink-100 px-2 py-0.5 rounded-full border border-pink-200">
+                وفّري 10% إضافي
+              </span>
+            </div>
+            <p className="text-[11px] text-stone-500 leading-relaxed">
+              أضيفي القطعة المكملة لهذا الموديل لتحصلي على طقم متناسق أنيق وشحن مجاني!
+            </p>
+            <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center gap-2.5">
+                <div className="w-11 h-11 rounded-xl bg-white border border-pink-200 flex items-center justify-center text-lg shadow-2xs">
+                  🥿
+                </div>
+                <div>
+                  <span className="text-xs font-bold text-stone-800 block">سليبر شتوي قطيفة فرو ناعم</span>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-xs text-rose-600 font-bold">180 ج.م</span>
+                    <span className="text-[10px] text-stone-400 line-through">230 ج.م</span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setBundleAdded(true);
+                  setTimeout(() => setBundleAdded(false), 3000);
+                }}
+                className={`text-xs font-bold px-3 py-1.5 rounded-xl border transition cursor-pointer ${
+                  bundleAdded
+                    ? 'bg-emerald-100 text-emerald-800 border-emerald-300 shadow-2xs'
+                    : 'bg-white hover:bg-pink-100 text-rose-600 border-pink-200 shadow-2xs'
+                }`}
+              >
+                {bundleAdded ? 'تمت الإضافة للطقم ✓' : '+ إضافة الطقم'}
+              </button>
+            </div>
           </div>
 
           {/* Guarantees Box */}
@@ -535,7 +621,11 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
       )}
 
       {sizeGuideOpen && (
-        <SizeGuideModal onClose={() => setSizeGuideOpen(false)} />
+        <SizeGuideModal
+          onClose={() => setSizeGuideOpen(false)}
+          onSelectSize={(sz) => setSelectedSize(sz)}
+          availableSizes={product.sizes}
+        />
       )}
     </div>
   );
