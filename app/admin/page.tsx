@@ -281,6 +281,12 @@ export default function AdminPage() {
   const [editingTrackingId, setEditingTrackingId] = useState<string | null>(null);
   const [tempTrackingNumber, setTempTrackingNumber] = useState('');
 
+  // Products search, filter & quick link copy
+  const [productSearchQuery, setProductSearchQuery] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('ALL');
+  const [productStockFilter, setProductStockFilter] = useState<'ALL' | 'IN_STOCK' | 'OUT_OF_STOCK' | 'NEW_ARRIVALS'>('ALL');
+  const [copiedProductId, setCopiedProductId] = useState<string | null>(null);
+
   // Settings saving state
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -1758,6 +1764,48 @@ export default function AdminPage() {
     return matchesStatus && matchesSearch;
   });
 
+  // Copy product link to clipboard
+  const handleCopyProductLink = (slug: string, id: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const url = `${origin}/product/${slug}`;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(url);
+    }
+    setCopiedProductId(id);
+    setSuccessMessage(`تم نسخ رابط المنتج المباشر بنجاح! 📋`);
+    setTimeout(() => {
+      setCopiedProductId(null);
+      setSuccessMessage('');
+    }, 3000);
+  };
+
+  // Filtered products
+  const filteredProducts = products.filter((p) => {
+    const q = productSearchQuery.trim().toLowerCase();
+    const matchesSearch =
+      !q ||
+      p.name.toLowerCase().includes(q) ||
+      (p.code && p.code.toLowerCase().includes(q)) ||
+      (p.slug && p.slug.toLowerCase().includes(q)) ||
+      (p.category?.name && p.category.name.toLowerCase().includes(q));
+
+    const matchesCat =
+      productCategoryFilter === 'ALL' ||
+      p.category?.id === productCategoryFilter ||
+      p.category?.name === productCategoryFilter;
+
+    const matchesStock =
+      productStockFilter === 'ALL'
+        ? true
+        : productStockFilter === 'IN_STOCK'
+        ? p.inStock
+        : productStockFilter === 'OUT_OF_STOCK'
+        ? !p.inStock
+        : p.isNewArrival;
+
+    return matchesSearch && matchesCat && matchesStock;
+  });
+
   if (authLoading) {
     return (
       <div className="min-h-screen bg-pink-50/50 flex flex-col items-center justify-center p-4">
@@ -1771,16 +1819,25 @@ export default function AdminPage() {
     <div className="min-h-screen bg-stone-50/70 pb-16">
       
       {/* Top Admin Header */}
-      <div className="bg-white border-b border-pink-100 sticky top-0 z-30 shadow-sm">
+      <div className="bg-white/95 backdrop-blur-md border-b border-pink-100 sticky top-0 z-30 shadow-xs">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 to-rose-600 flex items-center justify-center text-white shadow-soft-pink">
+            <span className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-pink-500 via-rose-500 to-rose-600 flex items-center justify-center text-white shadow-soft-pink">
               <Sparkles className="w-5 h-5" />
             </span>
             <div>
-              <h1 className="text-base sm:text-lg font-black text-stone-900 font-serif">
-                لوحة تحكم Fashion Zone 🛍️
-              </h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base sm:text-lg font-black text-stone-900 font-serif">
+                  لوحة تحكم Fashion Zone 🛍️
+                </h1>
+                <div className="hidden md:inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-2.5 py-0.5 rounded-full border border-emerald-200 text-[10px] font-bold">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span>المتجر مباشر أونلاين 🟢</span>
+                </div>
+              </div>
               <p className="text-[11px] text-stone-500">
                 مرحباً بكِ، {currentAdmin?.name || 'مديرة المتجر'} (جلستكِ محفوظة دائماً ✓)
               </p>
@@ -1791,7 +1848,7 @@ export default function AdminPage() {
             <Link
               href="/"
               target="_blank"
-              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-pink-50 hover:bg-pink-100 py-2 px-3.5 rounded-full transition"
+              className="flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:text-rose-700 bg-pink-50 hover:bg-pink-100 py-2 px-3.5 rounded-full transition border border-pink-200/60"
             >
               <Store className="w-4 h-4" />
               <span className="hidden sm:inline">معاينة المتجر</span>
@@ -1818,12 +1875,12 @@ export default function AdminPage() {
         </div>
 
         {/* Admin Navigation Tabs */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-2 overflow-x-auto py-2 border-t border-pink-50 scrollbar-none">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center gap-1.5 overflow-x-auto py-2 border-t border-pink-50 scrollbar-none">
           <button
             onClick={() => setActiveTab('overview')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
               activeTab === 'overview'
-                ? 'bg-rose-500 text-white shadow-sm shadow-pink-200'
+                ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm shadow-pink-300'
                 : 'text-stone-600 hover:bg-pink-50 hover:text-rose-600'
             }`}
           >
@@ -1835,7 +1892,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('products')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
               activeTab === 'products'
-                ? 'bg-rose-500 text-white shadow-sm shadow-pink-200'
+                ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm shadow-pink-300'
                 : 'text-stone-600 hover:bg-pink-50 hover:text-rose-600'
             }`}
           >
@@ -1847,7 +1904,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('categories')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
               activeTab === 'categories'
-                ? 'bg-rose-500 text-white shadow-sm shadow-pink-200'
+                ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm shadow-pink-300'
                 : 'text-stone-600 hover:bg-pink-50 hover:text-rose-600'
             }`}
           >
@@ -1859,14 +1916,16 @@ export default function AdminPage() {
             onClick={() => setActiveTab('orders')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap relative ${
               activeTab === 'orders'
-                ? 'bg-rose-500 text-white shadow-sm shadow-pink-200'
+                ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm shadow-pink-300'
                 : 'text-stone-600 hover:bg-pink-50 hover:text-rose-600'
             }`}
           >
             <ShoppingBag className="w-4 h-4" />
             <span>الطلبات والشحن ({orders.length})</span>
             {pendingOrdersCount > 0 && (
-              <span className="w-2 h-2 rounded-full bg-amber-400 absolute top-2 right-2 animate-ping"></span>
+              <span className="bg-amber-400 text-stone-900 text-[10px] font-black px-1.5 py-0.5 rounded-full mr-1 animate-pulse shadow-xs">
+                {pendingOrdersCount} جديد
+              </span>
             )}
           </button>
 
@@ -1874,7 +1933,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('coupons')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
               activeTab === 'coupons'
-                ? 'bg-rose-500 text-white shadow-sm shadow-pink-200'
+                ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm shadow-pink-300'
                 : 'text-stone-600 hover:bg-pink-50 hover:text-rose-600'
             }`}
           >
@@ -1894,7 +1953,7 @@ export default function AdminPage() {
             onClick={() => setActiveTab('ads_settings')}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
               activeTab === 'ads_settings'
-                ? 'bg-rose-500 text-white shadow-sm shadow-pink-200'
+                ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-sm shadow-pink-300'
                 : 'text-stone-600 hover:bg-pink-50 hover:text-rose-600'
             }`}
           >
@@ -2057,6 +2116,7 @@ export default function AdminPage() {
                         <th className="pb-3 font-semibold">الإجمالي</th>
                         <th className="pb-3 font-semibold">الحالة</th>
                         <th className="pb-3 font-semibold">التاريخ</th>
+                        <th className="pb-3 font-semibold text-center">إجراء سريع</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-50">
@@ -2091,6 +2151,29 @@ export default function AdminPage() {
                           </td>
                           <td className="py-3 text-stone-400">
                             {new Date(order.createdAt).toLocaleDateString('ar-EG')}
+                          </td>
+                          <td className="py-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <a
+                                href={`https://wa.me/${order.customerPhone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(
+                                  `مرحباً بكِ أ/ ${order.customerName} من متجر Fashion Zone ✨ بخصوص طلبك رقم ${order.orderNumber}.`
+                                )}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="bg-emerald-500 hover:bg-emerald-600 text-white p-1.5 rounded-lg text-xs transition shadow-2xs flex items-center gap-1"
+                                title="تواصل واتساب مباشر مع العميلة"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5" />
+                              </a>
+                              <Link
+                                href={`/track?order=${order.orderNumber}`}
+                                target="_blank"
+                                className="bg-pink-50 hover:bg-pink-100 text-rose-600 p-1.5 rounded-lg text-xs transition border border-pink-200"
+                                title="عرض صفحة تتبع الطلب"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -2918,6 +3001,111 @@ export default function AdminPage() {
               </div>
             )}
 
+            {/* Products Search & Filters Toolbar */}
+            <div className="bg-white rounded-3xl p-4 sm:p-5 border border-pink-100 shadow-sm space-y-3">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                {/* Search Input */}
+                <div className="relative flex-1">
+                  <Search className="w-4 h-4 text-stone-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={productSearchQuery}
+                    onChange={(e) => setProductSearchQuery(e.target.value)}
+                    placeholder="ابحثي باسم المنتج، كود الموديل (#2061)، أو الرابط..."
+                    className="w-full pl-9 pr-10 py-2.5 rounded-2xl border border-pink-200 text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-rose-400 focus:ring-2 focus:ring-pink-100 transition"
+                  />
+                  {productSearchQuery && (
+                    <button
+                      onClick={() => setProductSearchQuery('')}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 p-1 text-stone-400 hover:text-stone-600 rounded-full"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Category Dropdown Filter */}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-stone-500 whitespace-nowrap">القسم:</span>
+                  <select
+                    value={productCategoryFilter}
+                    onChange={(e) => setProductCategoryFilter(e.target.value)}
+                    className="bg-pink-50/60 border border-pink-200 text-stone-800 text-xs font-bold px-3 py-2.5 rounded-2xl focus:outline-none focus:border-rose-400 cursor-pointer"
+                  >
+                    <option value="ALL">جميع الأقسام ({products.length})</option>
+                    {categories.map((cat) => (
+                      <option key={cat.id} value={cat.id}>
+                        {cat.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Quick Status Filter Chips */}
+              <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-pink-50 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setProductStockFilter('ALL')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition ${
+                    productStockFilter === 'ALL'
+                      ? 'bg-rose-500 text-white shadow-xs'
+                      : 'bg-stone-100 text-stone-600 hover:bg-pink-50 hover:text-rose-600'
+                  }`}
+                >
+                  الكل ({products.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProductStockFilter('IN_STOCK')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition ${
+                    productStockFilter === 'IN_STOCK'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  }`}
+                >
+                  متوفر بالمخزون ({inStockCount}) ✓
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProductStockFilter('OUT_OF_STOCK')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition ${
+                    productStockFilter === 'OUT_OF_STOCK'
+                      ? 'bg-red-600 text-white shadow-xs'
+                      : 'bg-red-50 text-red-700 hover:bg-red-100'
+                  }`}
+                >
+                  نفدت الكمية ({products.length - inStockCount}) ✕
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProductStockFilter('NEW_ARRIVALS')}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition ${
+                    productStockFilter === 'NEW_ARRIVALS'
+                      ? 'bg-pink-600 text-white shadow-xs'
+                      : 'bg-pink-50 text-pink-700 hover:bg-pink-100'
+                  }`}
+                >
+                  وصل حديثاً ({products.filter((p) => p.isNewArrival).length}) 🎀
+                </button>
+
+                {(productSearchQuery || productCategoryFilter !== 'ALL' || productStockFilter !== 'ALL') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProductSearchQuery('');
+                      setProductCategoryFilter('ALL');
+                      setProductStockFilter('ALL');
+                    }}
+                    className="text-[11px] font-bold text-rose-600 hover:underline mr-auto flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    <span>إعادة ضبط الفلاتر</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Products Table */}
             <div className="bg-white rounded-3xl p-6 border border-pink-100 shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
@@ -2934,83 +3122,118 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-pink-50">
-                    {products.map((product) => (
-                      <tr key={product.id} className="hover:bg-pink-50/20 transition">
-                        <td className="py-3">
-                          <div className="w-12 h-14 relative rounded-xl overflow-hidden bg-pink-50 border border-pink-100">
-                            {product.images?.[0] ? (
-                              <Image src={product.images[0]} alt={product.name} fill className="object-cover" />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-[10px] text-stone-400">بدون</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 font-bold text-stone-800">
-                          <div>{product.name}</div>
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            {product.code && (
-                              <span className="inline-block bg-pink-100 text-rose-700 text-[10px] font-mono px-2 py-0.5 rounded-md font-bold">
-                                كود: {product.code}
-                              </span>
-                            )}
-                            {product.nameEn && <span className="text-[10px] text-stone-400">{product.nameEn}</span>}
-                          </div>
-                        </td>
-                        <td className="py-3 text-stone-600">{product.category?.name || 'غير محدد'}</td>
-                        <td className="py-3 font-bold text-rose-600">{product.price} ج.م</td>
-                        <td className="py-3">
+                    {filteredProducts.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-10 text-center">
+                          <p className="text-stone-500 font-bold text-sm mb-1">لا توجد منتجات مطابقة لبحثكِ الحالي 🔍</p>
+                          <p className="text-stone-400 text-xs mb-3">جرّبي كتابة اسم أو كود آخر أو إعادة ضبط الفلاتر.</p>
                           <button
-                            onClick={() => handleToggleStock(product)}
-                            className={`px-3 py-1 rounded-full text-[10px] font-bold transition ${
-                              product.inStock
-                                ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                : 'bg-red-100 text-red-700 hover:bg-red-200'
-                            }`}
+                            type="button"
+                            onClick={() => {
+                              setProductSearchQuery('');
+                              setProductCategoryFilter('ALL');
+                              setProductStockFilter('ALL');
+                            }}
+                            className="bg-pink-50 hover:bg-pink-100 text-rose-600 font-bold px-4 py-2 rounded-xl text-xs transition"
                           >
-                            {product.inStock ? 'متوفر بالمخزون ✓' : 'نفذت الكمية ✕'}
+                            عرض جميع المنتجات ({products.length})
                           </button>
-                        </td>
-                        <td className="py-3">
-                          <button
-                            onClick={() => handleToggleNewArrival(product)}
-                            className={`px-3 py-1 rounded-full text-[10px] font-bold transition flex items-center gap-1 ${
-                              product.isNewArrival
-                                ? 'bg-rose-100 text-rose-700 hover:bg-rose-200 border border-pink-300'
-                                : 'bg-stone-100 text-stone-500 hover:bg-pink-50 hover:text-rose-600'
-                            }`}
-                            title={product.isNewArrival ? 'إزالة من وصل حديثاً' : 'إضافة إلى وصل حديثاً'}
-                          >
-                            <span>{product.isNewArrival ? 'معروض في وصل حديثاً 🎀 ✓' : '+ إضافة لوصل حديثاً'}</span>
-                          </button>
-                        </td>
-                        <td className="py-3 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleStartEditProduct(product)}
-                              className="p-1.5 rounded-lg text-rose-600 hover:bg-pink-50 transition"
-                              title="تعديل بيانات المنتج والمقاسات"
-                            >
-                              <Edit2 className="w-4 h-4" />
-                            </button>
-                            <Link
-                              href={`/product/${product.slug}`}
-                              target="_blank"
-                              className="p-1.5 rounded-lg text-stone-500 hover:text-rose-600 hover:bg-pink-50"
-                              title="معاينة في المتجر"
-                            >
-                              <ExternalLink className="w-4 h-4" />
-                            </Link>
-                            <button
-                              onClick={() => handleDeleteProduct(product.id, product.name)}
-                              className="p-1.5 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50"
-                              title="حذف المنتج"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      filteredProducts.map((product) => (
+                        <tr key={product.id} className="hover:bg-pink-50/20 transition">
+                          <td className="py-3">
+                            <div className="w-12 h-14 relative rounded-xl overflow-hidden bg-pink-50 border border-pink-100">
+                              {product.images?.[0] ? (
+                                <Image src={product.images[0]} alt={product.name} fill className="object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[10px] text-stone-400">بدون</div>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 font-bold text-stone-800">
+                            <div>{product.name}</div>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {product.code && (
+                                <span className="inline-block bg-pink-100 text-rose-700 text-[10px] font-mono px-2 py-0.5 rounded-md font-bold">
+                                  كود: {product.code}
+                                </span>
+                              )}
+                              {product.nameEn && <span className="text-[10px] text-stone-400">{product.nameEn}</span>}
+                            </div>
+                          </td>
+                          <td className="py-3 text-stone-600">{product.category?.name || 'غير محدد'}</td>
+                          <td className="py-3 font-bold text-rose-600">{product.price} ج.م</td>
+                          <td className="py-3">
+                            <button
+                              onClick={() => handleToggleStock(product)}
+                              className={`px-3 py-1 rounded-full text-[10px] font-bold transition ${
+                                product.inStock
+                                  ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                  : 'bg-red-100 text-red-700 hover:bg-red-200'
+                              }`}
+                            >
+                              {product.inStock ? 'متوفر بالمخزون ✓' : 'نفذت الكمية ✕'}
+                            </button>
+                          </td>
+                          <td className="py-3">
+                            <button
+                              onClick={() => handleToggleNewArrival(product)}
+                              className={`px-3 py-1 rounded-full text-[10px] font-bold transition flex items-center gap-1 ${
+                                product.isNewArrival
+                                  ? 'bg-rose-100 text-rose-700 hover:bg-rose-200 border border-pink-300'
+                                  : 'bg-stone-100 text-stone-500 hover:bg-pink-50 hover:text-rose-600'
+                              }`}
+                              title={product.isNewArrival ? 'إزالة من وصل حديثاً' : 'إضافة إلى وصل حديثاً'}
+                            >
+                              <span>{product.isNewArrival ? 'معروض في وصل حديثاً 🎀 ✓' : '+ إضافة لوصل حديثاً'}</span>
+                            </button>
+                          </td>
+                          <td className="py-3 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                onClick={() => handleCopyProductLink(product.slug, product.id)}
+                                className={`p-1.5 rounded-lg transition ${
+                                  copiedProductId === product.id
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : 'text-stone-500 hover:text-rose-600 hover:bg-pink-50'
+                                }`}
+                                title="نسخ رابط الموديل المباشر للمشاركة على واتساب وفيسبوك"
+                              >
+                                {copiedProductId === product.id ? (
+                                  <Check className="w-4 h-4 text-emerald-600" />
+                                ) : (
+                                  <Copy className="w-4 h-4" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleStartEditProduct(product)}
+                                className="p-1.5 rounded-lg text-rose-600 hover:bg-pink-50 transition"
+                                title="تعديل بيانات المنتج والمقاسات"
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </button>
+                              <Link
+                                href={`/product/${product.slug}`}
+                                target="_blank"
+                                className="p-1.5 rounded-lg text-stone-500 hover:text-rose-600 hover:bg-pink-50"
+                                title="معاينة في المتجر"
+                              >
+                                <ExternalLink className="w-4 h-4" />
+                              </Link>
+                              <button
+                                onClick={() => handleDeleteProduct(product.id, product.name)}
+                                className="p-1.5 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50"
+                                title="حذف المنتج"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
