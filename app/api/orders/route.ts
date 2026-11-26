@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyAdmin } from '@/lib/auth';
+import { notifyAdminOnNewOrder } from '@/lib/notifications';
 
 // GET /api/orders - جلب سجل الطلبات للإدارة (خاص بالمدير)
 export async function GET(request: Request) {
@@ -51,6 +52,15 @@ export async function POST(request: Request) {
         discountAmount: discountAmount ? Math.max(0, parseFloat(discountAmount) || 0) : undefined,
         status: 'PENDING',
       },
+    });
+
+    // Notify Admin via Web Push immediately (non-blocking)
+    notifyAdminOnNewOrder({
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      total: order.total,
+    }).catch((err) => {
+      console.warn('Failed to send admin push notification:', err);
     });
 
     return NextResponse.json({ success: true, order });

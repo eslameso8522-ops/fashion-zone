@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifyAdmin } from '@/lib/auth';
+import { notifyCustomersOnNewProduct } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
 
@@ -118,6 +119,21 @@ export async function POST(request: Request) {
         isNewArrival: Boolean(isNewArrival),
         inStock: true,
       },
+    });
+
+    // Notify Customers via Web Push (non-blocking)
+    const primaryImg =
+      Array.isArray(newProduct.images) && newProduct.images.length > 0
+        ? String(newProduct.images[0])
+        : undefined;
+
+    notifyCustomersOnNewProduct({
+      name: newProduct.name,
+      price: newProduct.price,
+      slug: newProduct.slug,
+      image: primaryImg,
+    }).catch((err) => {
+      console.warn('Failed to notify customers of new product:', err);
     });
 
     return NextResponse.json({ success: true, product: newProduct });

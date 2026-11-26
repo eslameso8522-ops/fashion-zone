@@ -144,3 +144,28 @@ model Expense {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model PushSubscriber {
+  id        String   @id @default(cuid())
+  endpoint  String   @unique @db.VarChar(500)
+  p256dh    String   @db.Text
+  auth      String   @db.Text
+  role      String   @default("CUSTOMER") // "CUSTOMER" or "ADMIN"
+  createdAt DateTime @default(now())
+}
+
+model FashionReel {
+  id          String   @id @default(cuid())
+  title       String
+  code        String?
+  views       String?  @default("14.2K")
+  duration    String?  @default("0:30")
+  thumbnail   String   @db.Text
+  videoUrl    String   @db.Text
+  price       Float?
+  slug        String?
+  orderIndex  Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

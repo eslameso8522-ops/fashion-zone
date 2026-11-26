@@ -58,6 +58,7 @@ const FASHION_REELS = [
 export default function HomePage() {
   const [products, setProducts] = useState<Product[]>(PRODUCTS);
   const [categories, setCategories] = useState(CATEGORIES);
+  const [reels, setReels] = useState<any[]>(FASHION_REELS);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'homewear' | 'featured' | 'sale'>('all');
   const [activeReel, setActiveReel] = useState<any | null>(null);
 
@@ -171,6 +172,15 @@ export default function HomePage() {
         }
       })
       .catch((err) => console.log('Loaded default categories', err));
+
+    fetch('/api/reels')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.reels) && data.reels.length > 0) {
+          setReels(data.reels);
+        }
+      })
+      .catch((err) => console.log('Loaded default reels', err));
   }, []);
 
   const filteredProducts = products.filter((product) => {
@@ -444,7 +454,7 @@ export default function HomePage() {
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-          {FASHION_REELS.map((reel) => (
+          {reels.map((reel) => (
             <div
               key={reel.id}
               onClick={() => setActiveReel(reel)}

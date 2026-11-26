@@ -49,9 +49,16 @@ import {
   TrendingUp,
   ArrowUpRight,
   SlidersHorizontal,
+  Video,
+  Play,
+  Volume2,
+  VolumeX,
+  Send,
+  Radio,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { applyWatermarkToFile } from '@/lib/watermark';
+import { registerPushSubscription } from '@/lib/pushHelper';
 
 interface CategoryItem {
   id: string;
@@ -149,7 +156,22 @@ interface SiteSettings {
   watermarkPosition?: 'bottom-right' | 'bottom-left' | 'center';
 }
 
-type TabType = 'overview' | 'products' | 'categories' | 'orders' | 'coupons' | 'ads_settings';
+interface FashionReelItem {
+  id: string;
+  title: string;
+  code?: string;
+  views?: string;
+  duration?: string;
+  thumbnail: string;
+  videoUrl: string;
+  price?: number;
+  slug?: string;
+  orderIndex: number;
+  isActive: boolean;
+  createdAt?: string;
+}
+
+type TabType = 'overview' | 'products' | 'categories' | 'orders' | 'coupons' | 'reels' | 'ads_settings';
 
 export default function AdminPage() {
   const router = useRouter();
@@ -375,15 +397,98 @@ export default function AdminPage() {
   }>>([]);
   const [savingOrder, setSavingOrder] = useState(false);
 
+  // Reels states (فيديوهات الموديلات على الطبيعة)
+  const [reels, setReels] = useState<FashionReelItem[]>([]);
+  const [showAddReelModal, setShowAddReelModal] = useState(false);
+  const [editingReel, setEditingReel] = useState<FashionReelItem | null>(null);
+  const [previewReel, setPreviewReel] = useState<FashionReelItem | null>(null);
+  const [reelTitle, setReelTitle] = useState('');
+  const [reelCode, setReelCode] = useState('');
+  const [reelViews, setReelViews] = useState('14.2K');
+  const [reelDuration, setReelDuration] = useState('0:28');
+  const [reelThumbnail, setReelThumbnail] = useState('');
+  const [reelVideoUrl, setReelVideoUrl] = useState('');
+  const [reelPrice, setReelPrice] = useState('');
+  const [reelSlug, setReelSlug] = useState('');
+  const [savingReel, setSavingReel] = useState(false);
+  const [uploadingReelThumb, setUploadingReelThumb] = useState(false);
+
+  // Audio Alerts & Real-time Live Order states
+  const [audioAlertsEnabled, setAudioAlertsEnabled] = useState(true);
+  const [newOrderAlert, setNewOrderAlert] = useState<OrderItem | null>(null);
+  const [adminPushSubscribed, setAdminPushSubscribed] = useState(false);
+
+  // Push Broadcast Notification Modal states
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [broadcastTitle, setBroadcastTitle] = useState('');
+  const [broadcastBody, setBroadcastBody] = useState('');
+  const [broadcastUrl, setBroadcastUrl] = useState('/');
+  const [broadcastTarget, setBroadcastTarget] = useState<'CUSTOMER' | 'ALL'>('CUSTOMER');
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+
+  // Web Audio API Crystal Bell Chime
+  const playOrderChime = () => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+
+      const now = ctx.currentTime;
+
+      // Note 1: E5 (659.25Hz)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(659.25, now);
+      osc1.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+      gain1.gain.setValueAtTime(0.3, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.55);
+
+      // Note 2: C#6 (1108.73Hz)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(1108.73, now + 0.15);
+      gain2.gain.setValueAtTime(0.35, now + 0.15);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.15);
+      osc2.stop(now + 0.9);
+
+      // Note 3: E6 (1318.51Hz)
+      const osc3 = ctx.createOscillator();
+      const gain3 = ctx.createGain();
+      osc3.type = 'sine';
+      osc3.frequency.setValueAtTime(1318.51, now + 0.3);
+      gain3.gain.setValueAtTime(0.25, now + 0.3);
+      gain3.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+      osc3.connect(gain3);
+      gain3.connect(ctx.destination);
+      osc3.start(now + 0.3);
+      osc3.stop(now + 1.15);
+    } catch (err) {
+      console.warn('Audio chime warning:', err);
+    }
+  };
+
   // Fetch initial data
   const fetchData = async () => {
     try {
-      const [catsRes, prodsRes, ordersRes, settingsRes, couponsRes] = await Promise.all([
+      const [catsRes, prodsRes, ordersRes, settingsRes, couponsRes, reelsRes] = await Promise.all([
         fetch('/api/categories'),
         fetch('/api/products'),
         fetch('/api/orders'),
         fetch('/api/settings'),
         fetch('/api/coupons'),
+        fetch('/api/reels?all=true'),
       ]);
 
       const catsData = await catsRes.json();
@@ -391,6 +496,7 @@ export default function AdminPage() {
       const ordersData = await ordersRes.json();
       const settingsData = await settingsRes.json();
       const couponsData = await couponsRes.json();
+      const reelsData = await reelsRes.json();
 
       if (catsData.success) {
         setCategories(catsData.categories);
@@ -403,6 +509,9 @@ export default function AdminPage() {
       }
       if (ordersData.success) {
         setOrders(ordersData.orders);
+      }
+      if (reelsData.success && Array.isArray(reelsData.reels)) {
+        setReels(reelsData.reels);
       }
       if (settingsData.success && settingsData.settings) {
         setSettings(settingsData.settings);
@@ -463,6 +572,282 @@ export default function AdminPage() {
     localStorage.removeItem('fz_admin_token');
     await fetch('/api/admin/logout', { method: 'POST' });
     router.replace('/admin/login');
+  };
+
+  // Real-time live polling for incoming orders (every 12 seconds)
+  useEffect(() => {
+    if (authLoading) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const token = typeof window !== 'undefined' ? localStorage.getItem('fz_admin_token') : null;
+        const res = await fetch('/api/orders', {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+        const data = await res.json();
+        if (data.success && Array.isArray(data.orders)) {
+          setOrders((prevOrders) => {
+            if (prevOrders.length > 0 && data.orders.length > prevOrders.length) {
+              const latestOrder = data.orders[0];
+              const alreadyKnown = prevOrders.some((o) => o.id === latestOrder.id);
+              if (!alreadyKnown) {
+                if (audioAlertsEnabled) {
+                  playOrderChime();
+                }
+                setNewOrderAlert(latestOrder);
+                confetti({ particleCount: 70, spread: 60 });
+                if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+                  new Notification('🔔 طلب شراء جديد في Fashion Zone!', {
+                    body: `وصل طلب جديد برقم ${latestOrder.orderNumber} بقيمة ${latestOrder.total} ج.م من ${latestOrder.customerName}`,
+                    icon: '/icon-192.png',
+                  });
+                }
+              }
+            }
+            return data.orders;
+          });
+        }
+      } catch (err) {
+        // Background poll silent catch
+      }
+    }, 12000);
+
+    return () => clearInterval(pollInterval);
+  }, [authLoading, audioAlertsEnabled]);
+
+  // Enable Admin Web Push
+  const handleEnableAdminPush = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      alert('المتصفح الحالي لا يدعم إشعارات الويب.');
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      const success = await registerPushSubscription('ADMIN');
+      if (success) {
+        setAdminPushSubscribed(true);
+        confetti({ particleCount: 60, spread: 60 });
+        setSuccessMessage('تم تفعيل إشعارات الهاتف بنجاح! ستصلك تنبيهات فورية عند أي طلب جديد حتى لو كان المتصفح مغلقاً ✨');
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        alert('تم إعطاء الإذن ولكن تعذر حفظ الاشتراك في الخادم.');
+      }
+    } else {
+      alert('يرجى السماح بالإشعارات من إعدادات المتصفح.');
+    }
+  };
+
+  // Broadcast Web Push to customers
+  const handleSendBroadcast = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!broadcastTitle.trim() || !broadcastBody.trim()) {
+      alert('يرجى كتابة عنوان الإشعار ومحتواه.');
+      return;
+    }
+    setSendingBroadcast(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('fz_admin_token') : null;
+      const res = await fetch('/api/notifications/broadcast', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          title: broadcastTitle,
+          body: broadcastBody,
+          url: broadcastUrl || '/',
+          role: broadcastTarget,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        confetti({ particleCount: 80, spread: 70 });
+        setSuccessMessage(`تم إرسال الإشعار بنجاح إلى ${data.sentCount || 0} هاتف وجهاز مشترك! 🚀`);
+        setShowBroadcastModal(false);
+        setBroadcastTitle('');
+        setBroadcastBody('');
+        setBroadcastUrl('/');
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        alert(data.error || 'تعذر إرسال الإشعار.');
+      }
+    } catch (err: any) {
+      alert('خطأ أثناء إرسال الإشعار: ' + err.message);
+    } finally {
+      setSendingBroadcast(false);
+    }
+  };
+
+  // Reels CRUD Handlers
+  const handleCreateReel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reelTitle.trim() || !reelVideoUrl.trim() || !reelThumbnail.trim()) {
+      alert('يرجى إدخال عنوان الموديل، ورابط الفيديو، وصورة الغلاف.');
+      return;
+    }
+    setSavingReel(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('fz_admin_token') : null;
+      const res = await fetch('/api/reels', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          title: reelTitle.trim(),
+          code: reelCode.trim() || null,
+          views: reelViews.trim() || '14.2K',
+          duration: reelDuration.trim() || '0:28',
+          thumbnail: reelThumbnail.trim(),
+          videoUrl: reelVideoUrl.trim(),
+          price: reelPrice ? parseFloat(reelPrice) : null,
+          slug: reelSlug.trim() || null,
+          orderIndex: reels.length,
+          isActive: true,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.reel) {
+        setReels((prev) => [data.reel, ...prev]);
+        setShowAddReelModal(false);
+        setReelTitle('');
+        setReelCode('');
+        setReelPrice('');
+        setReelSlug('');
+        setReelThumbnail('');
+        setReelVideoUrl('');
+        confetti({ particleCount: 60, spread: 60 });
+        setSuccessMessage('تمت إضافة فيديو الموديل ونشره في قسم «شاهدي الموديلات على الطبيعة» بنجاح! 🎥✨');
+        setTimeout(() => setSuccessMessage(''), 4000);
+      } else {
+        alert(data.error || 'تعذر حفظ الفيديو.');
+      }
+    } catch (err: any) {
+      alert('خطأ أثناء إضافة الفيديو: ' + err.message);
+    } finally {
+      setSavingReel(false);
+    }
+  };
+
+  const handleUpdateReel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingReel) return;
+    setSavingReel(true);
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('fz_admin_token') : null;
+      const res = await fetch('/api/reels', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          id: editingReel.id,
+          title: reelTitle.trim(),
+          code: reelCode.trim() || null,
+          views: reelViews.trim(),
+          duration: reelDuration.trim(),
+          thumbnail: reelThumbnail.trim(),
+          videoUrl: reelVideoUrl.trim(),
+          price: reelPrice ? parseFloat(reelPrice) : null,
+          slug: reelSlug.trim() || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.reel) {
+        setReels((prev) => prev.map((r) => (r.id === data.reel.id ? data.reel : r)));
+        setEditingReel(null);
+        setSuccessMessage('تم تحديث بيانات فيديو الموديل بنجاح! ✨');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      } else {
+        alert(data.error || 'تعذر تعديل الفيديو.');
+      }
+    } catch (err: any) {
+      alert('خطأ أثناء تعديل الفيديو: ' + err.message);
+    } finally {
+      setSavingReel(false);
+    }
+  };
+
+  const handleToggleReelActive = async (reel: FashionReelItem) => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('fz_admin_token') : null;
+      const nextState = !reel.isActive;
+      const res = await fetch('/api/reels', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          id: reel.id,
+          isActive: nextState,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReels((prev) => prev.map((r) => (r.id === reel.id ? { ...r, isActive: nextState } : r)));
+        setSuccessMessage(nextState ? 'تم تفعيل ظهور الفيديو في المتجر ✓' : 'تم إخفاء الفيديو من المتجر ✕');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to toggle reel', err);
+    }
+  };
+
+  const handleDeleteReel = async (id: string) => {
+    if (!window.confirm('هل أنتِ متأكدة من حذف هذا الفيديو من قسم الموديلات على الطبيعة؟')) {
+      return;
+    }
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('fz_admin_token') : null;
+      const res = await fetch(`/api/reels?id=${id}`, {
+        method: 'DELETE',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReels((prev) => prev.filter((r) => r.id !== id));
+        setSuccessMessage('تم حذف الفيديو بنجاح.');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to delete reel', err);
+    }
+  };
+
+  const handleReelThumbUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingReelThumb(true);
+    try {
+      let finalFile = file;
+      if (autoWatermark) {
+        try {
+          finalFile = await applyWatermarkToFile(file, { position: watermarkPosition });
+        } catch (wmErr) {
+          console.warn('Watermark warning:', wmErr);
+        }
+      }
+      const formData = new FormData();
+      formData.append('file', finalFile);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success && data.url) {
+        setReelThumbnail(data.url);
+      } else {
+        alert('فشل رفع صورة الغلاف.');
+      }
+    } catch (err) {
+      console.error('Error uploading reel thumbnail', err);
+    } finally {
+      setUploadingReelThumb(false);
+    }
   };
 
   // Upload Product Image to Cloudinary (with optional auto-watermark)
@@ -2013,7 +2398,32 @@ export default function AdminPage() {
             </span>
           </button>
 
-          {/* 6. Accounting */}
+          {/* 6. Reels - Videos from Real Life */}
+          <button
+            onClick={() => {
+              setActiveTab('reels');
+              setMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all ${
+              activeTab === 'reels'
+                ? 'bg-gradient-to-l from-rose-600 to-pink-600 text-white shadow-lg shadow-rose-900/30 font-black'
+                : 'text-stone-300 hover:bg-stone-800/60 hover:text-white'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <Video className={`w-4 h-4 ${activeTab === 'reels' ? 'text-white' : 'text-rose-400'}`} />
+              <span>الموديلات على الطبيعة 🎥</span>
+            </div>
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                activeTab === 'reels' ? 'bg-white/20 text-white' : 'bg-stone-800 text-stone-300'
+              }`}
+            >
+              {reels.length}
+            </span>
+          </button>
+
+          {/* 7. Accounting */}
           <Link
             href="/admin/accounting"
             className="w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-bold transition-all text-emerald-400 hover:bg-emerald-950/40 hover:text-emerald-300 border border-emerald-900/40"
@@ -2134,8 +2544,59 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Left: Quick Add Product + Notification Bell + Admin Avatar */}
-          <div className="flex items-center gap-2.5">
+          {/* Left: Audio Toggle + Broadcast + Quick Add Product + Notification Bell + Admin Avatar */}
+          <div className="flex items-center gap-2">
+            
+            {/* Audio Alert Toggle & Test Chime */}
+            <button
+              onClick={() => {
+                const nextState = !audioAlertsEnabled;
+                setAudioAlertsEnabled(nextState);
+                if (nextState) {
+                  playOrderChime();
+                }
+              }}
+              className={`p-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 ${
+                audioAlertsEnabled
+                  ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
+                  : 'bg-stone-100 text-stone-500 hover:bg-stone-200 border border-stone-200'
+              }`}
+              title={
+                audioAlertsEnabled
+                  ? 'صوت تنبيه الطلبات الفوري مفعّل ✓ (اضغطي لتجربة الرنين أو كتمه)'
+                  : 'صوت تنبيه الطلبات مكتوم (اضغطي للتفعيل)'
+              }
+            >
+              {audioAlertsEnabled ? (
+                <Volume2 className="w-4 h-4 text-emerald-600" />
+              ) : (
+                <VolumeX className="w-4 h-4 text-stone-400" />
+              )}
+              <span className="hidden xl:inline">{audioAlertsEnabled ? 'رنين الطلبات مفعّل' : 'مكتوم'}</span>
+            </button>
+
+            {/* Broadcast Push to Customers Button */}
+            <button
+              onClick={() => setShowBroadcastModal(true)}
+              className="bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 text-xs font-bold px-3 py-2 rounded-xl transition flex items-center gap-1.5 shadow-xs"
+              title="إرسال إشعار فوري لجميع هواتف العميلات المشتركات"
+            >
+              <Send className="w-3.5 h-3.5 text-amber-600" />
+              <span className="hidden lg:inline">إشعار جماعي</span>
+            </button>
+
+            {/* Admin Mobile Push Subscription Button */}
+            {!adminPushSubscribed && (
+              <button
+                onClick={handleEnableAdminPush}
+                className="bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold px-3 py-2 rounded-xl transition hidden sm:flex items-center gap-1.5 shadow-xs"
+                title="تفعيل إشعارات الطلبات الفورية على هذا الهاتف/الجهاز حتى عند إغلاق المتصفح"
+              >
+                <Smartphone className="w-3.5 h-3.5 text-rose-500" />
+                <span className="hidden xl:inline">إشعارات الهاتف</span>
+              </button>
+            )}
+
             <button
               onClick={() => {
                 setActiveTab('products');
@@ -2169,6 +2630,43 @@ export default function AdminPage() {
             </div>
           </div>
         </header>
+
+        {/* Live New Order Real-Time Alert Toast */}
+        {newOrderAlert && (
+          <div className="px-4 sm:px-6 lg:px-8 mt-4">
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 text-white shadow-xl flex items-center justify-between animate-bounce border border-white/20">
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center text-xl animate-pulse flex-shrink-0">
+                  🔔
+                </span>
+                <div>
+                  <h4 className="font-black text-xs sm:text-sm">طلب شراء جديد وصل الآن للمتجر! (#{newOrderAlert.orderNumber})</h4>
+                  <p className="text-[11px] text-pink-100">
+                    العميلة: <span className="font-bold underline text-white">{newOrderAlert.customerName}</span> | الإجمالي:{' '}
+                    <span className="font-bold text-white font-sans">{newOrderAlert.total} ج.م</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setActiveTab('orders');
+                    setNewOrderAlert(null);
+                  }}
+                  className="bg-white text-rose-600 px-3.5 py-1.5 rounded-xl font-black text-xs hover:bg-pink-50 shadow-md transition whitespace-nowrap"
+                >
+                  معاينة الطلب 👁️
+                </button>
+                <button
+                  onClick={() => setNewOrderAlert(null)}
+                  className="text-white hover:text-white/70 p-1.5 rounded-lg"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Success Alert Banner */}
         {successMessage && (
@@ -5701,6 +6199,202 @@ export default function AdminPage() {
         )}
 
         {/* ==================================================== */}
+        {/* TAB: REELS & LIVE MODEL VIDEOS MANAGEMENT */}
+        {/* ==================================================== */}
+        {activeTab === 'reels' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-pink-100 shadow-xs">
+              <div>
+                <div className="inline-flex items-center gap-1.5 text-xs font-bold text-rose-500 mb-1">
+                  <Video className="w-4 h-4" />
+                  <span>فيديوهات من أرض الواقع للعميلات</span>
+                </div>
+                <h2 className="text-xl font-black text-stone-900 font-serif">
+                  قسم «شاهدي الموديلات على الطبيعة 🎥✨»
+                </h2>
+                <p className="text-xs text-stone-500 mt-1 max-w-xl">
+                  تحكمي بالكامل في فيديوهات وريلز الموديلات المعروضة في الصفحة الرئيسية، وعدلي الأسعار والأكواد واربطي كل فيديو بمنتج متجرك لتمكين العميلات من طلبه فوراً.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setEditingReel(null);
+                    setReelTitle('');
+                    setReelCode('');
+                    setReelPrice('');
+                    setReelSlug('');
+                    setReelThumbnail('');
+                    setReelVideoUrl('');
+                    setReelViews('15.4K');
+                    setReelDuration('0:30');
+                    setShowAddReelModal(true);
+                  }}
+                  className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white text-xs font-black px-4 py-2.5 rounded-2xl shadow-md transition flex items-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>+ إضافة فيديو موديل</span>
+                </button>
+
+                <Link
+                  href="/"
+                  target="_blank"
+                  className="p-2.5 rounded-2xl border border-stone-200 text-stone-600 hover:bg-stone-100 text-xs font-bold transition flex items-center gap-1.5"
+                  title="معاينة القسم في المتجر"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span className="hidden sm:inline">معاينة بالمتجر</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Quick KPI stats for Reels */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-pink-100 shadow-xs">
+                <span className="text-[11px] font-bold text-stone-400 block mb-1">إجمالي الفيديوهات</span>
+                <span className="text-xl font-black text-stone-900 font-sans">{reels.length} فيديو</span>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-emerald-100 shadow-xs">
+                <span className="text-[11px] font-bold text-emerald-600 block mb-1">فيديوهات نشطة بالمتجر</span>
+                <span className="text-xl font-black text-emerald-700 font-sans">
+                  {reels.filter((r) => r.isActive).length} نشط
+                </span>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-pink-100 shadow-xs">
+                <span className="text-[11px] font-bold text-rose-500 block mb-1">فيديوهات مربوطة بمنتجات</span>
+                <span className="text-xl font-black text-rose-600 font-sans">
+                  {reels.filter((r) => r.slug).length} مربوط
+                </span>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-pink-100 shadow-xs">
+                <span className="text-[11px] font-bold text-stone-400 block mb-1">وضعية العرض بالصفحة</span>
+                <span className="text-xs font-black text-stone-800">ريلز رأسية 9:16 بوب أب</span>
+              </div>
+            </div>
+
+            {/* Reels Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              {reels.map((reel) => (
+                <div
+                  key={reel.id}
+                  className={`bg-white rounded-3xl border overflow-hidden shadow-xs hover:shadow-md transition-all flex flex-col justify-between ${
+                    reel.isActive ? 'border-pink-200' : 'border-stone-200 opacity-75'
+                  }`}
+                >
+                  {/* Thumbnail & Video Preview Trigger */}
+                  <div className="relative aspect-[9/16] bg-stone-900 overflow-hidden group">
+                    <Image
+                      src={reel.thumbnail}
+                      alt={reel.title}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30" />
+
+                    {/* Play Button Overlay */}
+                    <button
+                      onClick={() => setPreviewReel(reel)}
+                      className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                      title="معاينة تشغيل الفيديو"
+                    >
+                      <span className="w-12 h-12 rounded-full bg-white/90 text-rose-600 flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                        <Play className="w-5 h-5 fill-current ml-0.5" />
+                      </span>
+                    </button>
+
+                    {/* Badges on Thumbnail */}
+                    <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-full text-[10px] text-white font-bold">
+                      {reel.views} مشاهدة
+                    </div>
+
+                    <div className="absolute top-3 left-3">
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
+                          reel.isActive ? 'bg-emerald-500 text-white' : 'bg-stone-700 text-stone-200'
+                        }`}
+                      >
+                        {reel.isActive ? 'نشط بالمتجر ✓' : 'مخفي ✕'}
+                      </span>
+                    </div>
+
+                    {/* Bottom Caption Overlay */}
+                    <div className="absolute bottom-3 right-3 left-3 text-white space-y-1">
+                      {reel.code && (
+                        <span className="text-[10px] font-mono text-pink-300 font-bold block">{reel.code}</span>
+                      )}
+                      <h4 className="text-xs font-bold leading-tight line-clamp-2">{reel.title}</h4>
+                      {reel.price && (
+                        <span className="text-sm font-black text-pink-300 font-sans block">{reel.price} ج.م</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions & Product Link Bar */}
+                  <div className="p-3.5 bg-stone-50/80 border-t border-stone-100 space-y-2">
+                    <div className="flex items-center justify-between text-[11px] text-stone-500">
+                      <span>الرابط:</span>
+                      {reel.slug ? (
+                        <Link
+                          href={`/product/${reel.slug}`}
+                          target="_blank"
+                          className="font-bold text-rose-600 hover:underline truncate max-w-[140px]"
+                        >
+                          /{reel.slug} ↗
+                        </Link>
+                      ) : (
+                        <span className="text-stone-400">غير مربوط</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between gap-1 pt-1 border-t border-stone-200/60">
+                      <button
+                        onClick={() => {
+                          setEditingReel(reel);
+                          setReelTitle(reel.title);
+                          setReelCode(reel.code || '');
+                          setReelPrice(reel.price ? String(reel.price) : '');
+                          setReelSlug(reel.slug || '');
+                          setReelThumbnail(reel.thumbnail);
+                          setReelVideoUrl(reel.videoUrl);
+                          setReelViews(reel.views || '15.4K');
+                          setReelDuration(reel.duration || '0:30');
+                        }}
+                        className="p-1.5 text-stone-600 hover:text-stone-900 hover:bg-stone-200 rounded-lg text-xs font-bold flex items-center gap-1 transition"
+                        title="تعديل الفيديو"
+                      >
+                        <Edit2 className="w-3.5 h-3.5 text-rose-500" />
+                        <span>تعديل</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleToggleReelActive(reel)}
+                        className={`p-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
+                          reel.isActive ? 'text-amber-700 hover:bg-amber-100' : 'text-emerald-700 hover:bg-emerald-100'
+                        }`}
+                        title={reel.isActive ? 'إخفاء من المتجر' : 'تفعيل بالمتجر'}
+                      >
+                        {reel.isActive ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        <span>{reel.isActive ? 'إخفاء' : 'إظهار'}</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteReel(reel.id)}
+                        className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-bold transition"
+                        title="حذف الفيديو"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* ==================================================== */}
         {/* TAB 6: ADS & SETTINGS MANAGEMENT */}
         {/* ==================================================== */}
         {activeTab === 'ads_settings' && (
@@ -6410,6 +7104,414 @@ export default function AdminPage() {
               </div>
 
             </form>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* MODAL: ADD / EDIT FASHION REEL */}
+        {/* ======================================================== */}
+        {(showAddReelModal || editingReel) && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn overflow-y-auto">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-lg w-full border border-pink-200 shadow-2xl animate-scaleUp my-8 space-y-6">
+              
+              {/* Modal Header */}
+              <div className="flex items-center justify-between pb-4 border-b border-pink-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center">
+                    <Video className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-stone-900">
+                      {editingReel ? 'تعديل بيانات فيديو الموديل 🎥' : 'إضافة فيديو موديل جديد للقسم 🎥✨'}
+                    </h3>
+                    <p className="text-[11px] text-stone-400">
+                      سيظهر في قسم «شاهدي الموديلات على الطبيعة» بالصفحة الرئيسية
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowAddReelModal(false);
+                    setEditingReel(null);
+                  }}
+                  className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={editingReel ? handleUpdateReel : handleCreateReel} className="space-y-4">
+                
+                {/* 1. Quick Product Selector Helper */}
+                {!editingReel && products.length > 0 && (
+                  <div className="p-3 bg-pink-50/70 rounded-2xl border border-pink-200/80 space-y-1.5">
+                    <label className="block text-[11px] font-black text-rose-800">
+                      ✨ تعبئة سريعة عبر اختيار منتج من متجرك (اختياري):
+                    </label>
+                    <select
+                      value={reelSlug}
+                      onChange={(e) => {
+                        const selSlug = e.target.value;
+                        setReelSlug(selSlug);
+                        const found = products.find((p) => p.slug === selSlug);
+                        if (found) {
+                          if (!reelTitle) setReelTitle(found.name);
+                          if (!reelCode && found.code) setReelCode(`#${found.code}`);
+                          if (!reelPrice) setReelPrice(String(found.price));
+                          if (!reelThumbnail && found.images && found.images.length > 0) {
+                            setReelThumbnail(String(found.images[0]));
+                          }
+                        }
+                      }}
+                      className="w-full text-xs px-3 py-2 rounded-xl bg-white border border-pink-200 text-stone-800 font-bold outline-hidden focus:ring-2 focus:ring-rose-200"
+                    >
+                      <option value="">-- اختاري منتجاً لملء الاسم والسعر والصورة تلقائياً --</option>
+                      {products.map((p) => (
+                        <option key={p.id} value={p.slug}>
+                          {p.name} {p.code ? `(#${p.code})` : ''} - {p.price} ج.م
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* 2. Title */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    عنوان أو وصف الموديل *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={reelTitle}
+                    onChange={(e) => setReelTitle(e.target.value)}
+                    placeholder="مثال: بيجامة هايدي زراير مطعمة فرو 😍"
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 outline-hidden focus:border-rose-400 focus:ring-2 focus:ring-rose-100"
+                  />
+                </div>
+
+                {/* 3. Code & Price */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      كود الموديل
+                    </label>
+                    <input
+                      type="text"
+                      value={reelCode}
+                      onChange={(e) => setReelCode(e.target.value)}
+                      placeholder="#2061"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 font-mono outline-hidden focus:border-rose-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      سعر الموديل (ج.م)
+                    </label>
+                    <input
+                      type="number"
+                      value={reelPrice}
+                      onChange={(e) => setReelPrice(e.target.value)}
+                      placeholder="650"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 font-sans outline-hidden focus:border-rose-400"
+                    />
+                  </div>
+                </div>
+
+                {/* 4. Video URL */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    رابط ملف الفيديو (Direct MP4 URL) *
+                  </label>
+                  <input
+                    type="url"
+                    required
+                    value={reelVideoUrl}
+                    onChange={(e) => setReelVideoUrl(e.target.value)}
+                    placeholder="https://res.cloudinary.com/.../video.mp4"
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 font-mono outline-hidden focus:border-rose-400"
+                  />
+                  <span className="text-[10px] text-stone-400 mt-0.5 block">
+                    يمكنك وضع أي رابط فيديو مباشر بصيغة mp4 من Cloudinary أو السيرفر أو استضافة الفيديوهات.
+                  </span>
+                </div>
+
+                {/* 5. Thumbnail URL & Direct Upload */}
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    صورة غلاف الفيديو (Thumbnail) *
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      required
+                      value={reelThumbnail}
+                      onChange={(e) => setReelThumbnail(e.target.value)}
+                      placeholder="https://images.unsplash.com/... أو رابط الصورة"
+                      className="flex-1 text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 outline-hidden focus:border-rose-400 font-mono"
+                    />
+                    <label className="cursor-pointer bg-pink-50 hover:bg-pink-100 text-rose-700 border border-pink-200 px-3 py-2 rounded-xl text-xs font-bold flex items-center gap-1 transition">
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{uploadingReelThumb ? 'جاري الرفع...' : 'رفع غلاف'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleReelThumbUpload}
+                        disabled={uploadingReelThumb}
+                      />
+                    </label>
+                  </div>
+
+                  {reelThumbnail && (
+                    <div className="mt-2 relative w-16 h-28 rounded-xl overflow-hidden border border-pink-200 shadow-xs">
+                      <Image src={reelThumbnail} alt="Thumbnail preview" fill className="object-cover" />
+                    </div>
+                  )}
+                </div>
+
+                {/* 6. Product Link Slug & Views & Duration */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      رابط المنتج (Slug)
+                    </label>
+                    <input
+                      type="text"
+                      value={reelSlug}
+                      onChange={(e) => setReelSlug(e.target.value)}
+                      placeholder="6268 أو اسم السلاج"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 outline-hidden focus:border-rose-400 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      عدد المشاهدات الظاهري
+                    </label>
+                    <input
+                      type="text"
+                      value={reelViews}
+                      onChange={(e) => setReelViews(e.target.value)}
+                      placeholder="14.2K"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 outline-hidden focus:border-rose-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      مدة الفيديو
+                    </label>
+                    <input
+                      type="text"
+                      value={reelDuration}
+                      onChange={(e) => setReelDuration(e.target.value)}
+                      placeholder="0:28"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-pink-200 outline-hidden focus:border-rose-400 font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Submit & Cancel */}
+                <div className="pt-4 border-t border-pink-100 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddReelModal(false);
+                      setEditingReel(null);
+                    }}
+                    className="px-4 py-2.5 rounded-xl text-stone-500 hover:bg-stone-100 text-xs font-bold transition"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingReel}
+                    className="bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 disabled:opacity-50 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
+                  >
+                    {savingReel ? (
+                      <span>جاري الحفظ...</span>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span>{editingReel ? 'حفظ التعديلات' : 'نشر الفيديو بالمتجر ✨'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* MODAL: LIVE REEL VIDEO PREVIEW */}
+        {/* ======================================================== */}
+        {previewReel && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
+            <div className="relative w-full max-w-xs aspect-[9/16] max-h-[85vh] bg-stone-900 rounded-3xl overflow-hidden shadow-2xl border border-white/20 flex flex-col justify-between">
+              
+              {/* Top Controls */}
+              <div className="relative z-10 flex items-center justify-between p-4 bg-gradient-to-b from-black/80 to-transparent">
+                <div className="flex items-center gap-2 text-white">
+                  <span className="w-7 h-7 rounded-full bg-rose-500 flex items-center justify-center text-xs font-black font-serif">
+                    FZ
+                  </span>
+                  <div>
+                    <h4 className="text-xs font-bold leading-tight truncate max-w-[170px]">{previewReel.title}</h4>
+                    <span className="text-[10px] text-pink-300 font-mono">{previewReel.code}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setPreviewReel(null)}
+                  className="w-8 h-8 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Video Player */}
+              <div className="absolute inset-0 w-full h-full">
+                <video
+                  src={previewReel.videoUrl}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+              </div>
+
+              {/* Bottom Footer Info */}
+              <div className="relative z-10 p-4 bg-gradient-to-t from-black/90 via-black/40 to-transparent text-white flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-stone-300 block">سعر الموديل:</span>
+                  <span className="text-base font-black text-pink-300 font-sans">{previewReel.price || 0} ج.م</span>
+                </div>
+                <span className="text-[10px] bg-rose-500 text-white font-bold px-2.5 py-1 rounded-xl">
+                  {previewReel.views} مشاهدة
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* MODAL: BROADCAST PUSH NOTIFICATION TO CUSTOMERS */}
+        {/* ======================================================== */}
+        {showBroadcastModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fadeIn">
+            <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-md w-full border border-amber-200 shadow-2xl animate-scaleUp space-y-6">
+              
+              <div className="flex items-center justify-between pb-4 border-b border-amber-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                    <Send className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-base text-stone-900">
+                      إرسال إشعار فوري لهواتف العميلات 📢✨
+                    </h3>
+                    <p className="text-[11px] text-stone-400">
+                      يصل مباشرة كإشعار في شريط هواتف العميلات المشتركات
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowBroadcastModal(false)}
+                  className="p-1.5 rounded-xl text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSendBroadcast} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    عنوان الإشعار *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={broadcastTitle}
+                    onChange={(e) => setBroadcastTitle(e.target.value)}
+                    placeholder="مثال: وصل كوليكشن شتاء 2026 الجديد! ❄️✨"
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-amber-200 outline-hidden focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    نص الإشعار *
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={broadcastBody}
+                    onChange={(e) => setBroadcastBody(e.target.value)}
+                    placeholder="مثال: بيجامات هايدي وترينجات قطيفة مستوردة بأقوى العروض وشحن مجاني! استخدمي كود GIRL10"
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-amber-200 outline-hidden focus:border-amber-400 focus:ring-2 focus:ring-amber-100"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    الرابط الذي يُفتح عند الضغط على الإشعار
+                  </label>
+                  <input
+                    type="text"
+                    value={broadcastUrl}
+                    onChange={(e) => setBroadcastUrl(e.target.value)}
+                    placeholder="/"
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-amber-200 font-mono outline-hidden focus:border-amber-400"
+                  />
+                  <span className="text-[10px] text-stone-400 block mt-0.5">
+                    اتركيه / لفتح الصفحة الرئيسية، أو اكتبي /catalog أو رابط منتج محدد.
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    الفئة المستهدفة
+                  </label>
+                  <select
+                    value={broadcastTarget}
+                    onChange={(e: any) => setBroadcastTarget(e.target.value)}
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-amber-200 bg-white font-bold text-stone-800"
+                  >
+                    <option value="CUSTOMER">جميع هواتف العميلات المشتركات (Customer Only)</option>
+                    <option value="ALL">الجميع (عميلات + إدارة المتجر)</option>
+                  </select>
+                </div>
+
+                <div className="pt-4 border-t border-amber-100 flex items-center justify-end gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowBroadcastModal(false)}
+                    className="px-4 py-2.5 rounded-xl text-stone-500 hover:bg-stone-100 text-xs font-bold transition"
+                  >
+                    إلغاء
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={sendingBroadcast}
+                    className="bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 disabled:opacity-50 text-white text-xs font-bold px-6 py-2.5 rounded-xl shadow-md transition flex items-center gap-1.5"
+                  >
+                    {sendingBroadcast ? (
+                      <span>جاري إرسال الإشعار...</span>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4" />
+                        <span>إرسال الإشعار لجميع المشتركين الآن 🚀</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+              </form>
+            </div>
           </div>
         )}
 

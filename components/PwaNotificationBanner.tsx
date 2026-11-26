@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { Download, BellRing, Sparkles, X, Check, Copy, Gift } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { registerPushSubscription } from '@/lib/pushHelper';
 
 interface SettingsData {
   announcementText?: string;
@@ -101,12 +102,16 @@ export default function PwaNotificationBanner() {
 
       if (permission === 'granted') {
         confetti({ particleCount: 60, spread: 60 });
+        
+        // Register Push Subscription on Backend
+        await registerPushSubscription('CUSTOMER');
+
         if ('serviceWorker' in navigator) {
           navigator.serviceWorker.ready.then((reg) => {
             reg.showNotification('مرحباً بكِ في Fashion Zone ✨', {
               body: 'تم تفعيل إشعارات العروض بنجاح! ستصلكِ أحدث التشكيلات وكوبونات الخصم فور نزولها.',
-              icon: '/icon.png',
-              badge: '/icon.png',
+              icon: '/icon-192.png',
+              badge: '/icon-192.png',
             });
           });
         }
