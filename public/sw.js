@@ -1,11 +1,9 @@
 // Service Worker for Fashion Zone PWA
-const CACHE_NAME = 'fashion-zone-v1';
+const CACHE_NAME = 'fashion-zone-v2';
 const STATIC_ASSETS = [
-  '/',
   '/manifest.webmanifest',
-  '/wishlist',
-  '/cart',
-  '/track',
+  '/icon-192.png',
+  '/icon-512.png',
 ];
 
 // Install Event
@@ -35,7 +33,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch Event - Stale While Revalidate
+// Fetch Event - Network First with Cache Fallback (Always fresh updates + offline support)
 self.addEventListener('fetch', (event) => {
   // Only handle GET requests and non-API requests
   if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
@@ -43,21 +41,17 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      const fetchPromise = fetch(event.request)
-        .then((networkResponse) => {
-          if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
-            const responseToCache = networkResponse.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-          }
-          return networkResponse;
-        })
-        .catch(() => cachedResponse);
-
-      return cachedResponse || fetchPromise;
-    })
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+        }
+        return networkResponse;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
 

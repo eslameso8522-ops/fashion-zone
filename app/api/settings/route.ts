@@ -42,6 +42,12 @@ export async function GET() {
           heroBannerCtaLink: '#catalog',
           heroBannerImage: '',
           heroBannerEnabled: true,
+          flashSaleEnabled: true,
+          flashSaleBadge: 'عرض حصري محدود ⚡',
+          flashSaleTitle: 'تخفيضات الفلاش سيل الكبرى',
+          flashSaleSubtitle: 'خصومات استثنائية تصل إلى 50% على أفضل الموديلات المختارة لفترة محدودة جداً!',
+          flashSaleHours: 24,
+          testimonialsEnabled: true,
         },
       });
     }
@@ -80,6 +86,12 @@ export async function GET() {
         heroBannerCtaLink: '#catalog',
         heroBannerImage: '',
         heroBannerEnabled: true,
+        flashSaleEnabled: true,
+        flashSaleBadge: 'عرض حصري محدود ⚡',
+        flashSaleTitle: 'تخفيضات الفلاش سيل الكبرى',
+        flashSaleSubtitle: 'خصومات استثنائية تصل إلى 50% على أفضل الموديلات المختارة لفترة محدودة جداً!',
+        flashSaleHours: 24,
+        testimonialsEnabled: true,
       },
     });
   }
@@ -128,6 +140,13 @@ export async function POST(request: Request) {
       heroCtaLink,
       watermarkEnabled,
       watermarkPosition,
+      flashSaleEnabled,
+      flashSaleBadge,
+      flashSaleTitle,
+      flashSaleSubtitle,
+      flashSaleHours,
+      testimonialsEnabled,
+      testimonialsData,
     } = body;
 
     const dataPayload: any = {};
@@ -166,6 +185,13 @@ export async function POST(request: Request) {
     if (heroCtaLink !== undefined) dataPayload.heroCtaLink = heroCtaLink;
     if (watermarkEnabled !== undefined) dataPayload.watermarkEnabled = Boolean(watermarkEnabled);
     if (watermarkPosition !== undefined) dataPayload.watermarkPosition = watermarkPosition;
+    if (flashSaleEnabled !== undefined) dataPayload.flashSaleEnabled = Boolean(flashSaleEnabled);
+    if (flashSaleBadge !== undefined) dataPayload.flashSaleBadge = flashSaleBadge;
+    if (flashSaleTitle !== undefined) dataPayload.flashSaleTitle = flashSaleTitle;
+    if (flashSaleSubtitle !== undefined) dataPayload.flashSaleSubtitle = flashSaleSubtitle;
+    if (flashSaleHours !== undefined) dataPayload.flashSaleHours = parseInt(flashSaleHours, 10);
+    if (testimonialsEnabled !== undefined) dataPayload.testimonialsEnabled = Boolean(testimonialsEnabled);
+    if (testimonialsData !== undefined) dataPayload.testimonialsData = testimonialsData;
 
     const updated = await prisma.siteSettings.upsert({
       where: { id: 'default' },

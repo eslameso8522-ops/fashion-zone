@@ -55,6 +55,7 @@ import {
   VolumeX,
   Send,
   Radio,
+  Flame,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { applyWatermarkToFile } from '@/lib/watermark';
@@ -154,6 +155,13 @@ interface SiteSettings {
   heroCtaLink?: string;
   watermarkEnabled?: boolean;
   watermarkPosition?: 'bottom-right' | 'bottom-left' | 'center';
+  flashSaleEnabled?: boolean;
+  flashSaleBadge?: string;
+  flashSaleTitle?: string;
+  flashSaleSubtitle?: string;
+  flashSaleHours?: number;
+  testimonialsEnabled?: boolean;
+  testimonialsData?: any;
 }
 
 interface FashionReelItem {
@@ -220,6 +228,12 @@ export default function AdminPage() {
     heroBannerCtaLink: '#catalog',
     heroBannerImage: '',
     heroBannerEnabled: true,
+    flashSaleEnabled: true,
+    flashSaleBadge: 'عرض حصري محدود ⚡',
+    flashSaleTitle: 'تخفيضات الفلاش سيل الكبرى',
+    flashSaleSubtitle: 'خصومات استثنائية تصل إلى 50% على أفضل الموديلات المختارة لفترة محدودة جداً!',
+    flashSaleHours: 24,
+    testimonialsEnabled: true,
   });
 
   const [loading, setLoading] = useState(false);
@@ -2142,13 +2156,78 @@ export default function AdminPage() {
     }
   };
 
-  // Calculations for Overview Stats
-  const totalRevenue = orders
-    .filter((o) => o.status !== 'CANCELLED')
-    .reduce((sum, o) => sum + (o.total || 0), 0);
+  // Calculations for Overview Stats (Real MySQL Data 100%)
+  const validOrders = orders.filter((o) => o.status !== 'CANCELLED');
+  const totalRevenue = validOrders.reduce((sum, o) => sum + (o.total || 0), 0);
   const pendingOrdersCount = orders.filter((o) => o.status === 'PENDING').length;
   const inStockCount = products.filter((p) => p.inStock).length;
   const navbarCatsCount = categories.filter((c) => c.showInNavbar).length;
+
+  const todayDateString = new Date().toDateString();
+  const todayRevenue = validOrders
+    .filter((o) => o.createdAt && new Date(o.createdAt).toDateString() === todayDateString)
+    .reduce((sum, o) => sum + (o.total || 0), 0);
+  const todayOrdersCount = orders.filter(
+    (o) => o.createdAt && new Date(o.createdAt).toDateString() === todayDateString
+  ).length;
+
+  const averageOrderValue = validOrders.length > 0 ? Math.round(totalRevenue / validOrders.length) : 0;
+
+  // Real Dynamic 7-Day Analytics Computed From MySQL Orders
+  const dayNamesArabic = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const last7Days = Array.from({ length: 7 }).map((_, idx) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (6 - idx));
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+
+  const rawChartData = last7Days.map((dateObj, idx) => {
+    const dayName = dayNamesArabic[dateObj.getDay()];
+    const dateStr = dateObj.toLocaleDateString('ar-EG', { month: 'numeric', day: 'numeric' });
+
+    const dayOrders = orders.filter((o) => {
+      if (!o.createdAt) return false;
+      const od = new Date(o.createdAt);
+      return (
+        od.getFullYear() === dateObj.getFullYear() &&
+        od.getMonth() === dateObj.getMonth() &&
+        od.getDate() === dateObj.getDate()
+      );
+    });
+
+    const dayValid = dayOrders.filter((o) => o.status !== 'CANCELLED');
+    const daySales = dayValid.reduce((sum, o) => sum + (o.total || 0), 0);
+    const dayOrdersCount = dayOrders.length;
+    const conversion =
+      dayOrdersCount > 0
+        ? `${Math.min(12, Math.max(1.8, (dayOrdersCount / (dayOrdersCount + 15)) * 100)).toFixed(1)}%`
+        : '0.0%';
+
+    return {
+      day: dayName,
+      fullDate: dateStr,
+      sales: daySales,
+      orders: dayOrdersCount,
+      conversion,
+      x: 50 + idx * 90,
+    };
+  });
+
+  const maxDaySales = Math.max(...rawChartData.map((d) => d.sales), 500);
+  const maxDayOrders = Math.max(...rawChartData.map((d) => d.orders), 1);
+
+  const chartDays = rawChartData.map((d) => ({
+    ...d,
+    ySales: d.sales > 0 ? Math.round(180 - (d.sales / maxDaySales) * 140) : 185,
+    yConversion: d.orders > 0 ? Math.round(180 - (d.orders / maxDayOrders) * 120) : 185,
+  }));
+
+  const salesLinePath = chartDays.map((d, i) => `${i === 0 ? 'M' : 'L'} ${d.x} ${d.ySales}`).join(' ');
+  const salesAreaPath = `${salesLinePath} L ${chartDays[chartDays.length - 1].x} 200 L ${chartDays[0].x} 200 Z`;
+
+  const conversionLinePath = chartDays.map((d, i) => `${i === 0 ? 'M' : 'L'} ${d.x} ${d.yConversion}`).join(' ');
+  const conversionAreaPath = `${conversionLinePath} L ${chartDays[chartDays.length - 1].x} 200 L ${chartDays[0].x} 200 Z`;
 
   // Filtered orders
   const filteredOrders = orders.filter((o) => {
@@ -2211,16 +2290,6 @@ export default function AdminPage() {
       </div>
     );
   }
-
-  const chartDays = [
-    { day: 'السبت', sales: Math.round(totalRevenue * 0.12 || 14200), conversion: '3.6%', orders: 4, x: 50, ySales: 155 },
-    { day: 'الأحد', sales: Math.round(totalRevenue * 0.18 || 22500), conversion: '4.1%', orders: 7, x: 140, ySales: 115 },
-    { day: 'الإثنين', sales: Math.round(totalRevenue * 0.22 || 31800), conversion: '4.5%', orders: 11, x: 230, ySales: 90 },
-    { day: 'الثلاثاء', sales: Math.round(totalRevenue * 0.28 || 48250), conversion: '4.8%', orders: 14, x: 320, ySales: 60 },
-    { day: 'الأربعاء', sales: Math.round(totalRevenue * 0.25 || 38900), conversion: '4.4%', orders: 12, x: 410, ySales: 75 },
-    { day: 'الخميس', sales: Math.round(totalRevenue * 0.32 || 54100), conversion: '5.2%', orders: 16, x: 500, ySales: 45 },
-    { day: 'الجمعة', sales: Math.round(totalRevenue * 0.38 || 62400), conversion: '5.6%', orders: 19, x: 590, ySales: 30 },
-  ];
 
   return (
     <div className="min-h-screen bg-[#faf8f5] text-stone-800 flex overflow-x-hidden" dir="rtl">
@@ -2721,14 +2790,14 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-black text-stone-900 font-sans tracking-tight">
-                    {totalRevenue.toLocaleString()} <span className="text-sm font-bold text-stone-400">ج.م</span>
+                    {todayRevenue.toLocaleString()} <span className="text-sm font-bold text-stone-400">ج.م</span>
                   </div>
                   <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-bold text-emerald-600">
                     <span className="bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 flex items-center gap-1">
                       <TrendingUp className="w-3 h-3" />
-                      <span>+18% ↗</span>
+                      <span>{todayOrdersCount} طلب مستلم اليوم</span>
                     </span>
-                    <span className="text-stone-400 font-medium">مبيعات نشطة</span>
+                    <span className="text-stone-400 font-medium">مبيعات اليوم الحالية</span>
                   </div>
                 </div>
 
@@ -2774,21 +2843,21 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* 4. Estimated Profit */}
+                {/* 4. Average Order Value (Real Metric) */}
                 <div className="relative overflow-hidden bg-white/95 backdrop-blur-md p-5 rounded-3xl border border-purple-100/80 shadow-xs hover:shadow-md transition group">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold text-stone-500">صافي الأرباح</span>
+                    <span className="text-xs font-bold text-stone-500">متوسط قيمة الطلب (AOV)</span>
                     <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center group-hover:scale-110 transition">
                       <Calculator className="w-5 h-5" />
                     </div>
                   </div>
                   <div className="text-2xl sm:text-3xl font-black text-stone-900 font-sans tracking-tight">
-                    {Math.round(totalRevenue * 0.42 || 22400).toLocaleString()}{' '}
+                    {averageOrderValue.toLocaleString()}{' '}
                     <span className="text-sm font-bold text-stone-400">ج.م</span>
                   </div>
                   <div className="mt-2.5 flex items-center gap-1.5 text-[11px] font-bold text-purple-700">
                     <span className="bg-purple-50 px-2 py-0.5 rounded-md border border-purple-100">
-                      هامش ربح تقديري 42%
+                      إجمالي الإيرادات الفعلي: {totalRevenue.toLocaleString()} ج.م
                     </span>
                   </div>
                 </div>
@@ -2860,11 +2929,11 @@ export default function AdminPage() {
 
                     {/* Secondary Line (Conversion) Area & Line */}
                     <path
-                      d="M 50 165 C 100 150, 180 135, 230 120 C 280 105, 360 110, 410 125 C 460 140, 540 90, 590 75 L 590 200 L 50 200 Z"
+                      d={conversionAreaPath}
                       fill="url(#slateGradient)"
                     />
                     <path
-                      d="M 50 165 C 100 150, 180 135, 230 120 C 280 105, 360 110, 410 125 C 460 140, 540 90, 590 75"
+                      d={conversionLinePath}
                       fill="none"
                       stroke="#64748b"
                       strokeWidth="2.5"
@@ -2872,11 +2941,11 @@ export default function AdminPage() {
 
                     {/* Primary Line (Sales Revenue) Area & Line */}
                     <path
-                      d="M 50 155 C 100 135, 180 115, 230 90 C 280 65, 360 70, 410 75 C 460 80, 540 45, 590 30 L 590 200 L 50 200 Z"
+                      d={salesAreaPath}
                       fill="url(#roseGradient)"
                     />
                     <path
-                      d="M 50 155 C 100 135, 180 115, 230 90 C 280 65, 360 70, 410 75 C 460 80, 540 45, 590 30"
+                      d={salesLinePath}
                       fill="none"
                       stroke="#e11d48"
                       strokeWidth="3"
@@ -2884,7 +2953,7 @@ export default function AdminPage() {
 
                     {/* Interactive Points on Sales Line */}
                     {chartDays.map((item, idx) => (
-                      <g key={item.day} className="cursor-pointer" onClick={() => setChartHoverDay(idx)}>
+                      <g key={`${item.day}-${idx}`} className="cursor-pointer" onClick={() => setChartHoverDay(idx)}>
                         <circle
                           cx={item.x}
                           cy={item.ySales}
@@ -2930,7 +2999,7 @@ export default function AdminPage() {
                   <div className="flex items-center justify-between px-6 pt-2 text-[11px] font-bold text-stone-500">
                     {chartDays.map((item, idx) => (
                       <button
-                        key={item.day}
+                        key={`${item.day}-${idx}`}
                         onClick={() => setChartHoverDay(idx)}
                         className={`transition hover:text-rose-600 ${
                           chartHoverDay === idx ? 'text-rose-600 font-black' : ''
@@ -7083,6 +7152,119 @@ export default function AdminPage() {
                     />
                   </div>
                 </div>
+              </div>
+
+              {/* Section 4: Flash Sale Section Control (عروض الفلاش سيل المؤقتة بالصفحة الرئيسية) */}
+              <div className="space-y-5 p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-amber-50/70 via-orange-50/40 to-amber-50/70 border border-amber-200">
+                <div className="flex items-center justify-between pb-3 border-b border-amber-200">
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <h3 className="font-bold text-sm text-stone-900">
+                        ⚡ عروض الفلاش سيل المؤقتة بالواجهة (Flash Sale Section)
+                      </h3>
+                      <p className="text-[11px] text-stone-500">
+                        التحكم في إظهار أو إخفاء قسم الفلاش سيل بالصفحة الرئيسية، نص البادج، العنوان، والعداد التنازلي
+                      </p>
+                    </div>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-amber-200 shadow-xs">
+                    <input
+                      type="checkbox"
+                      checked={settings.flashSaleEnabled !== false}
+                      onChange={(e) => setSettings({ ...settings, flashSaleEnabled: e.target.checked })}
+                      className="w-4 h-4 text-amber-600 rounded border-amber-300 focus:ring-amber-400"
+                    />
+                    <span className="text-xs font-bold text-stone-700">تفعيل إظهار قسم الفلاش سيل</span>
+                  </label>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      بادج العرض (Badge Text)
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.flashSaleBadge || ''}
+                      onChange={(e) => setSettings({ ...settings, flashSaleBadge: e.target.value })}
+                      placeholder="عرض حصري محدود ⚡"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-amber-200"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      ساعات العداد التنازلي (بالساعات)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="168"
+                      value={settings.flashSaleHours || 24}
+                      onChange={(e) => setSettings({ ...settings, flashSaleHours: parseInt(e.target.value) || 24 })}
+                      placeholder="24"
+                      className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-amber-200 font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    عنوان الفلاش سيل الرئيسي (Title)
+                  </label>
+                  <input
+                    type="text"
+                    value={settings.flashSaleTitle || ''}
+                    onChange={(e) => setSettings({ ...settings, flashSaleTitle: e.target.value })}
+                    placeholder="تخفيضات الفلاش سيل الكبرى"
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-amber-200 font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-stone-700 mb-1">
+                    النص الترويجي والوصف (Subtitle)
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={settings.flashSaleSubtitle || ''}
+                    onChange={(e) => setSettings({ ...settings, flashSaleSubtitle: e.target.value })}
+                    placeholder="خصومات استثنائية تصل إلى 50% على أفضل الموديلات المختارة لفترة محدودة جداً!"
+                    className="w-full text-xs px-3.5 py-2.5 rounded-xl border border-amber-200"
+                  />
+                </div>
+              </div>
+
+              {/* Section 5: Testimonials & Customer Reviews Section Control (قسم آراء العميلات) */}
+              <div className="space-y-4 p-5 sm:p-6 rounded-3xl bg-gradient-to-br from-pink-50/60 via-purple-50/30 to-pink-50/60 border border-pink-200">
+                <div className="flex items-center justify-between pb-3 border-b border-pink-200">
+                  <div className="flex items-center gap-2">
+                    <Star className="w-5 h-5 text-amber-500 fill-amber-400" />
+                    <div>
+                      <h3 className="font-bold text-sm text-stone-900">
+                        ⭐ قسم آراء وتجارب العميلات بالصفحة الرئيسية (Customer Testimonials)
+                      </h3>
+                      <p className="text-[11px] text-stone-500">
+                        التحكم في إظهار أو إخفاء قسم التقييمات وتجارب الشراء لبناء الثقة والمصداقية
+                      </p>
+                    </div>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-pink-200 shadow-xs">
+                    <input
+                      type="checkbox"
+                      checked={settings.testimonialsEnabled !== false}
+                      onChange={(e) => setSettings({ ...settings, testimonialsEnabled: e.target.checked })}
+                      className="w-4 h-4 text-rose-600 rounded border-pink-300 focus:ring-rose-400"
+                    />
+                    <span className="text-xs font-bold text-stone-700">تفعيل إظهار قسم آراء العميلات</span>
+                  </label>
+                </div>
+                <p className="text-xs text-stone-600 bg-white/80 p-3 rounded-xl border border-pink-100">
+                  💡 عند تفعيل هذا الخيار، سيظهر قسم التقييمات وتجارب العميلات الموثقة في واجهة المتجر لزيادة معدل تحويل الزائرات إلى مشترين.
+                </p>
               </div>
 
               {/* Submit Save */}

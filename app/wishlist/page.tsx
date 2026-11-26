@@ -1,20 +1,51 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Heart, ArrowLeft, ShoppingBag } from 'lucide-react';
 import { useCart } from '@/lib/cartContext';
-import { PRODUCTS } from '@/lib/data';
+import { Product } from '@/lib/types';
 import ProductCard from '@/components/ProductCard';
 
 export default function WishlistPage() {
   const { wishlist } = useCart();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     document.title = 'قائمة المفضلة والأمنيات | Fashion Zone';
+    fetch('/api/products')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && Array.isArray(data.products)) {
+          const mapped = data.products.map((p: any) => ({
+            id: p.id,
+            slug: p.slug,
+            name: p.name,
+            nameEn: p.nameEn,
+            code: p.code,
+            description: p.description,
+            price: p.price,
+            originalPrice: p.originalPrice,
+            category: p.category?.name || 'عام',
+            categorySlug: p.category?.slug || 'all',
+            images: p.images || [],
+            sizes: p.sizes || [],
+            colors: p.colors || [],
+            isFeatured: p.isFeatured,
+            isNewArrival: p.isNewArrival,
+            inStock: p.inStock,
+            rating: p.rating || 5.0,
+            reviewsCount: p.reviewsCount || 1,
+          }));
+          setProducts(mapped);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  const favoriteProducts = PRODUCTS.filter((p) => wishlist.includes(p.id));
+  const favoriteProducts = products.filter((p) => wishlist.includes(p.id));
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-8">

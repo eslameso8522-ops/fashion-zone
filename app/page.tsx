@@ -4,7 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Sparkles, ArrowLeft, Heart, ShoppingBag, ShieldCheck, Truck, Star, Play, Video, Flame, Clock, CheckCircle2, X } from 'lucide-react';
-import { CATEGORIES, PRODUCTS } from '@/lib/data';
 import { Product } from '@/lib/types';
 import ProductCard from '@/components/ProductCard';
 
@@ -56,8 +55,9 @@ const FASHION_REELS = [
 ];
 
 export default function HomePage() {
-  const [products, setProducts] = useState<Product[]>(PRODUCTS);
-  const [categories, setCategories] = useState(CATEGORIES);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(true);
+  const [categories, setCategories] = useState<any[]>([]);
   const [reels, setReels] = useState<any[]>(FASHION_REELS);
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'homewear' | 'featured' | 'sale'>('all');
   const [activeReel, setActiveReel] = useState<any | null>(null);
@@ -98,6 +98,13 @@ export default function HomePage() {
     heroBannerEnabled: true,
     watermarkEnabled: true,
     watermarkPosition: 'bottom-right',
+    flashSaleEnabled: true,
+    flashSaleBadge: 'عروض شتاء 2026 الحصرية (Flash Sale)',
+    flashSaleTitle: 'تخفيضات تصل إلى 35% على تشكيلة الهوم وير والخروج! 🔥',
+    flashSaleSubtitle: 'استمتعي بأقوى عروض الموسم مع شحن مجاني لكافة محافظات مصر عند طلب قطعتين أو أكثر.',
+    flashSaleHours: 6,
+    testimonialsEnabled: true,
+    testimonialsData: null as any,
   });
 
   // Fetch live products and hero settings from MySQL on mount
@@ -129,6 +136,13 @@ export default function HomePage() {
             heroBannerEnabled: data.settings.heroBannerEnabled !== undefined ? data.settings.heroBannerEnabled : prev.heroBannerEnabled,
             watermarkEnabled: data.settings.watermarkEnabled !== undefined ? data.settings.watermarkEnabled : prev.watermarkEnabled,
             watermarkPosition: data.settings.watermarkPosition || prev.watermarkPosition,
+            flashSaleEnabled: data.settings.flashSaleEnabled !== undefined ? data.settings.flashSaleEnabled : prev.flashSaleEnabled,
+            flashSaleBadge: data.settings.flashSaleBadge || prev.flashSaleBadge,
+            flashSaleTitle: data.settings.flashSaleTitle || prev.flashSaleTitle,
+            flashSaleSubtitle: data.settings.flashSaleSubtitle || prev.flashSaleSubtitle,
+            flashSaleHours: data.settings.flashSaleHours || prev.flashSaleHours,
+            testimonialsEnabled: data.settings.testimonialsEnabled !== undefined ? data.settings.testimonialsEnabled : prev.testimonialsEnabled,
+            testimonialsData: data.settings.testimonialsData !== undefined ? data.settings.testimonialsData : prev.testimonialsData,
           }));
         }
       })
@@ -162,7 +176,8 @@ export default function HomePage() {
           setProducts(mapped);
         }
       })
-      .catch((err) => console.log('Loaded default products, live sync deferred', err));
+      .catch((err) => console.log('Loaded default products, live sync deferred', err))
+      .finally(() => setLoadingProducts(false));
 
     fetch('/api/categories')
       .then((res) => res.json())
@@ -504,54 +519,58 @@ export default function HomePage() {
       </section>
 
       {/* ========================================================
-          WINTER FLASH SALE COUNTDOWN SECTION
+          WINTER FLASH SALE COUNTDOWN SECTION (مربوط بلوحة التحكم)
       ======================================================== */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-stone-900 via-rose-950 to-stone-900 text-white shadow-xl border border-rose-900/50 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-2 text-center md:text-right">
-            <div className="inline-flex items-center gap-2 bg-rose-500/30 text-pink-300 px-3 py-1 rounded-full text-xs font-bold border border-rose-500/40">
-              <Flame className="w-4 h-4 text-rose-400 fill-current animate-bounce" />
-              <span>عروض شتاء 2026 الحصرية (Flash Sale)</span>
+      {heroSettings.flashSaleEnabled !== false && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-r from-stone-900 via-rose-950 to-stone-900 text-white shadow-xl border border-rose-900/50 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="space-y-2 text-center md:text-right">
+              {heroSettings.flashSaleBadge && (
+                <div className="inline-flex items-center gap-2 bg-rose-500/30 text-pink-300 px-3 py-1 rounded-full text-xs font-bold border border-rose-500/40">
+                  <Flame className="w-4 h-4 text-rose-400 fill-current animate-bounce" />
+                  <span>{heroSettings.flashSaleBadge}</span>
+                </div>
+              )}
+              <h3 className="text-xl sm:text-2xl font-black font-serif">
+                {heroSettings.flashSaleTitle || 'تخفيضات تصل إلى 35% على تشكيلة الهوم وير والخروج! 🔥'}
+              </h3>
+              <p className="text-xs text-stone-300 max-w-xl">
+                {heroSettings.flashSaleSubtitle || 'استمتعي بأقوى عروض الموسم مع شحن مجاني لكافة محافظات مصر عند طلب قطعتين أو أكثر.'}
+              </p>
             </div>
-            <h3 className="text-xl sm:text-2xl font-black font-serif">
-              تخفيضات تصل إلى 35% على تشكيلة الهوم وير والخروج! 🔥
-            </h3>
-            <p className="text-xs text-stone-300 max-w-xl">
-              استمتعي بأقوى عروض الموسم مع شحن مجاني لكافة محافظات مصر عند طلب قطعتين أو أكثر.
-            </p>
-          </div>
 
-          <div className="flex flex-col items-center gap-3">
-            <span className="text-xs text-pink-200 font-bold flex items-center gap-1.5">
-              <Clock className="w-4 h-4" />
-              <span>ينتهي العرض المؤقت خلال:</span>
-            </span>
-            <div className="flex items-center gap-2 font-mono text-sm sm:text-base font-black">
-              <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20 text-center min-w-[54px]">
-                <span className="block text-rose-400">{String(flashSaleTime.hours).padStart(2, '0')}</span>
-                <span className="text-[9px] text-stone-400 font-sans block">ساعة</span>
+            <div className="flex flex-col items-center gap-3">
+              <span className="text-xs text-pink-200 font-bold flex items-center gap-1.5">
+                <Clock className="w-4 h-4" />
+                <span>ينتهي العرض المؤقت خلال:</span>
+              </span>
+              <div className="flex items-center gap-2 font-mono text-sm sm:text-base font-black">
+                <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20 text-center min-w-[54px]">
+                  <span className="block text-rose-400">{String(flashSaleTime.hours).padStart(2, '0')}</span>
+                  <span className="text-[9px] text-stone-400 font-sans block">ساعة</span>
+                </div>
+                <span className="text-rose-400 text-lg font-bold">:</span>
+                <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20 text-center min-w-[54px]">
+                  <span className="block text-rose-400">{String(flashSaleTime.minutes).padStart(2, '0')}</span>
+                  <span className="text-[9px] text-stone-400 font-sans block">دقيقة</span>
+                </div>
+                <span className="text-rose-400 text-lg font-bold">:</span>
+                <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20 text-center min-w-[54px]">
+                  <span className="block text-rose-400">{String(flashSaleTime.seconds).padStart(2, '0')}</span>
+                  <span className="text-[9px] text-stone-400 font-sans block">ثانية</span>
+                </div>
               </div>
-              <span className="text-rose-400 text-lg font-bold">:</span>
-              <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20 text-center min-w-[54px]">
-                <span className="block text-rose-400">{String(flashSaleTime.minutes).padStart(2, '0')}</span>
-                <span className="text-[9px] text-stone-400 font-sans block">دقيقة</span>
-              </div>
-              <span className="text-rose-400 text-lg font-bold">:</span>
-              <div className="bg-white/10 backdrop-blur-md px-3 py-2 rounded-xl border border-white/20 text-center min-w-[54px]">
-                <span className="block text-rose-400">{String(flashSaleTime.seconds).padStart(2, '0')}</span>
-                <span className="text-[9px] text-stone-400 font-sans block">ثانية</span>
-              </div>
+              <a
+                href="#catalog"
+                onClick={() => setSelectedFilter('sale')}
+                className="mt-1 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold text-xs px-6 py-2.5 rounded-full shadow-md transition active:scale-95"
+              >
+                تسوقي عروض الفلاش سيل الآن ←
+              </a>
             </div>
-            <a
-              href="#catalog"
-              onClick={() => setSelectedFilter('sale')}
-              className="mt-1 bg-gradient-to-r from-rose-500 to-pink-500 hover:from-rose-600 hover:to-pink-600 text-white font-bold text-xs px-6 py-2.5 rounded-full shadow-md transition active:scale-95"
-            >
-              تسوقي عروض الفلاش سيل الآن ←
-            </a>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ========================================================
           FEATURED PRODUCTS CATALOG WITH TABS
@@ -611,11 +630,39 @@ export default function HomePage() {
         </div>
 
         {/* Product Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProducts.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
+        {loadingProducts ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-white rounded-3xl p-4 border border-pink-100 animate-pulse space-y-4">
+                <div className="aspect-[3/4] bg-pink-100/60 rounded-2xl w-full" />
+                <div className="h-4 bg-pink-100/60 rounded-md w-3/4" />
+                <div className="h-4 bg-pink-100/60 rounded-md w-1/2" />
+              </div>
+            ))}
+          </div>
+        ) : filteredProducts.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-16 bg-white rounded-3xl border border-pink-100 p-8 space-y-3">
+            <div className="w-16 h-16 rounded-full bg-pink-50 text-rose-500 mx-auto flex items-center justify-center text-2xl">
+              👗
+            </div>
+            <h3 className="font-bold text-stone-800 text-base">لا توجد منتجات متطابقة حالياً</h3>
+            <p className="text-xs text-stone-500 max-w-sm mx-auto">
+              ترقبي تشكيلاتنا وموديلاتنا الحصرية قريباً، أو تصفحي الأقسام الأخرى!
+            </p>
+            <button
+              onClick={() => setSelectedFilter('all')}
+              className="mt-2 text-xs font-bold text-rose-600 bg-pink-50 hover:bg-pink-100 px-4 py-2 rounded-xl transition cursor-pointer"
+            >
+              عرض جميع الموديلات
+            </button>
+          </div>
+        )}
       </section>
 
       {/* ========================================================
@@ -668,63 +715,65 @@ export default function HomePage() {
       )}
 
       {/* ========================================================
-          CUSTOMER REVIEWS / SOCIAL TESTIMONIALS
+          CUSTOMER REVIEWS / SOCIAL TESTIMONIALS (مربوط بلوحة التحكم)
       ======================================================== */}
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center space-y-2 mb-10">
-          <span className="text-xs font-bold text-rose-500 tracking-wider uppercase">آراء جميلاتنا</span>
-          <h2 className="text-2xl sm:text-3xl font-black text-stone-900 font-serif">
-            ماذا تقول عميلات Fashion Zone؟
-          </h2>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-6 rounded-3xl bg-white border border-pink-100 shadow-sm space-y-3">
-            <div className="flex items-center gap-1 text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-current" />
-              ))}
-            </div>
-            <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
-              "الفستان الحرير الوردي خيالي بجد! الخامة أحسن بكتير من الصور والتطريز متقن جداً، والتوصيل وصل في أقل من 48 ساعة."
-            </p>
-            <div className="pt-2 border-t border-pink-50 flex items-center justify-between text-xs">
-              <span className="font-bold text-stone-800">ياسمين مصطفى</span>
-              <span className="text-stone-400">القاهرة</span>
-            </div>
+      {heroSettings.testimonialsEnabled !== false && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center space-y-2 mb-10">
+            <span className="text-xs font-bold text-rose-500 tracking-wider uppercase">آراء جميلاتنا</span>
+            <h2 className="text-2xl sm:text-3xl font-black text-stone-900 font-serif">
+              ماذا تقول عميلات Fashion Zone؟
+            </h2>
           </div>
 
-          <div className="p-6 rounded-3xl bg-white border border-pink-100 shadow-sm space-y-3">
-            <div className="flex items-center gap-1 text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-current" />
-              ))}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-6 rounded-3xl bg-white border border-pink-100 shadow-sm space-y-3">
+              <div className="flex items-center gap-1 text-amber-400">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current" />
+                ))}
+              </div>
+              <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
+                "الفستان الحرير الوردي خيالي بجد! الخامة أحسن بكتير من الصور والتطريز متقن جداً، والتوصيل وصل في أقل من 48 ساعة."
+              </p>
+              <div className="pt-2 border-t border-pink-50 flex items-center justify-between text-xs">
+                <span className="font-bold text-stone-800">ياسمين مصطفى</span>
+                <span className="text-stone-400">القاهرة</span>
+              </div>
             </div>
-            <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
-              "الطلب من خلال الواتساب كان في قمة السهولة والذوق! خدمة العملاء ساعدوني في اختيار المقاس المناسب بالظبط وطلع مظبوط جداً."
-            </p>
-            <div className="pt-2 border-t border-pink-50 flex items-center justify-between text-xs">
-              <span className="font-bold text-stone-800">آية محمود</span>
-              <span className="text-stone-400">الإسكندرية</span>
-            </div>
-          </div>
 
-          <div className="p-6 rounded-3xl bg-white border border-pink-100 shadow-sm space-y-3">
-            <div className="flex items-center gap-1 text-amber-400">
-              {[...Array(5)].map((_, i) => (
-                <Star key={i} className="w-4 h-4 fill-current" />
-              ))}
+            <div className="p-6 rounded-3xl bg-white border border-pink-100 shadow-sm space-y-3">
+              <div className="flex items-center gap-1 text-amber-400">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current" />
+                ))}
+              </div>
+              <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
+                "الطلب من خلال الواتساب كان في قمة السهولة والذوق! خدمة العملاء ساعدوني في اختيار المقاس المناسب بالظبط وطلع مظبوط جداً."
+              </p>
+              <div className="pt-2 border-t border-pink-50 flex items-center justify-between text-xs">
+                <span className="font-bold text-stone-800">آية محمود</span>
+                <span className="text-stone-400">الإسكندرية</span>
+              </div>
             </div>
-            <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
-              "العباية اللؤلؤية تجنن والتغليف كان بناتي وشيك جداً كأنها هدية فاخرة! بالتأكيد هيكون متجري المفضل للمناسبات."
-            </p>
-            <div className="pt-2 border-t border-pink-50 flex items-center justify-between text-xs">
-              <span className="font-bold text-stone-800">سلمى عبد الرحمن</span>
-              <span className="text-stone-400">المنصورة</span>
+
+            <div className="p-6 rounded-3xl bg-white border border-pink-100 shadow-sm space-y-3">
+              <div className="flex items-center gap-1 text-amber-400">
+                {[...Array(5)].map((_, i) => (
+                  <Star key={i} className="w-4 h-4 fill-current" />
+                ))}
+              </div>
+              <p className="text-xs sm:text-sm text-stone-700 leading-relaxed">
+                "العباية اللؤلؤية تجنن والتغليف كان بناتي وشيك جداً كأنها هدية فاخرة! بالتأكيد هيكون متجري المفضل للمناسبات."
+              </p>
+              <div className="pt-2 border-t border-pink-50 flex items-center justify-between text-xs">
+                <span className="font-bold text-stone-800">سلمى عبد الرحمن</span>
+                <span className="text-stone-400">المنصورة</span>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* Video Reel Player Modal */}
       {activeReel && (

@@ -1,6 +1,5 @@
 import React from 'react';
 import { notFound } from 'next/navigation';
-import { CATEGORIES, PRODUCTS } from '@/lib/data';
 import { prisma } from '@/lib/prisma';
 import ProductCard from '@/components/ProductCard';
 
@@ -9,9 +8,6 @@ interface Props {
 }
 
 async function getCategoryData(slug: string) {
-  let category = CATEGORIES.find((c) => c.slug === slug);
-  let products = PRODUCTS.filter((p) => p.categorySlug === slug);
-
   try {
     const dbCategory = await prisma.category.findUnique({
       where: { slug },
@@ -23,7 +19,7 @@ async function getCategoryData(slug: string) {
     });
 
     if (dbCategory) {
-      category = {
+      const category = {
         id: dbCategory.id,
         slug: dbCategory.slug,
         name: dbCategory.name,
@@ -31,33 +27,33 @@ async function getCategoryData(slug: string) {
         itemCount: dbCategory.products.length,
       };
 
-      if (dbCategory.products.length > 0) {
-        products = dbCategory.products.map((p) => ({
-          id: p.id,
-          slug: p.slug,
-          name: p.name,
-          nameEn: p.nameEn || undefined,
-          description: p.description,
-          price: p.price,
-          originalPrice: p.originalPrice || undefined,
-          category: dbCategory.name,
-          categorySlug: dbCategory.slug,
-          images: (p.images as string[]) || [],
-          sizes: (p.sizes as string[]) || [],
-          colors: (p.colors as { name: string; hex: string }[]) || [],
-          isFeatured: p.isFeatured,
-          isNewArrival: p.isNewArrival,
-          inStock: p.inStock,
-          rating: p.rating,
-          reviewsCount: p.reviewsCount,
-        }));
-      }
+      const products = dbCategory.products.map((p) => ({
+        id: p.id,
+        slug: p.slug,
+        name: p.name,
+        nameEn: p.nameEn || undefined,
+        description: p.description,
+        price: p.price,
+        originalPrice: p.originalPrice || undefined,
+        category: dbCategory.name,
+        categorySlug: dbCategory.slug,
+        images: (p.images as string[]) || [],
+        sizes: (p.sizes as string[]) || [],
+        colors: (p.colors as { name: string; hex: string }[]) || [],
+        isFeatured: p.isFeatured,
+        isNewArrival: p.isNewArrival,
+        inStock: p.inStock,
+        rating: p.rating,
+        reviewsCount: p.reviewsCount,
+      }));
+
+      return { category, products };
     }
   } catch (e) {
     console.error('Error fetching category data from DB:', e);
   }
 
-  return { category, products };
+  return { category: null, products: [] };
 }
 
 export async function generateMetadata({ params }: Props) {

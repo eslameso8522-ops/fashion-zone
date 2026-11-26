@@ -225,18 +225,15 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
               </span>
             </div>
 
-            {/* Live Social Proof Counter */}
-            <div className="mt-3 py-2 px-3.5 rounded-2xl bg-gradient-to-r from-pink-50/80 via-rose-50/50 to-pink-50/80 border border-pink-200/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+            {/* Authentic Store Guarantee Highlight */}
+            <div className="mt-3 py-2.5 px-3.5 rounded-2xl bg-gradient-to-r from-pink-50/80 via-rose-50/50 to-pink-50/80 border border-pink-200/60 flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2 text-stone-700 font-bold">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500"></span>
-                </span>
-                <span>👀 تشاهد هذا الموديل الآن <span className="text-rose-600 font-black">{Math.floor(((product.price % 7) + 6))} عميلات</span></span>
+                <Sparkles className="w-4 h-4 text-rose-500" />
+                <span>خامات راقية مستوردة 100% مطابقة للصور والمعاينة متاحة قبل الاستلام</span>
               </div>
-              <div className="flex items-center gap-1.5 text-stone-600 font-medium text-[11px]">
-                <Flame className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                <span>تم طلبه <span className="font-bold text-stone-900">{Math.floor(((product.price % 11) + 12))} مرة</span> خلال الـ 24 ساعة الماضية</span>
+              <div className="flex items-center gap-1.5 text-emerald-700 font-bold text-[11px] bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-100">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                <span>الدفع عند الاستلام بعد المعاينة</span>
               </div>
             </div>
           </div>
@@ -258,21 +255,19 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
             )}
           </div>
 
-          {/* Flash Sale Urgency Countdown Timer */}
+          {/* Real Discount Savings Highlight */}
           {discountPercent > 0 && (
             <div className="p-3 rounded-2xl bg-gradient-to-r from-rose-500 via-pink-500 to-rose-600 text-white flex items-center justify-between shadow-xs animate-fadeIn">
               <div className="flex items-center gap-2">
-                <span className="text-base animate-bounce">🔥</span>
+                <Flame className="w-5 h-5 text-white animate-pulse" />
                 <div>
-                  <span className="text-xs font-black block">عرض شتاء 2026 الحصري</span>
-                  <span className="text-[10px] text-pink-100">سعر مخفض لفترة محدودة</span>
+                  <span className="text-xs font-black block">عرض تخفيض مميز</span>
+                  <span className="text-[10px] text-pink-100">وفّري {product.originalPrice! - product.price} جنيه مع هذا الموديل</span>
                 </div>
               </div>
-              <div className="flex items-center gap-1 font-mono text-xs font-black bg-black/25 px-2.5 py-1 rounded-xl">
-                <span>{String(timeLeft.hours).padStart(2, '0')}</span>:
-                <span>{String(timeLeft.minutes).padStart(2, '0')}</span>:
-                <span>{String(timeLeft.seconds).padStart(2, '0')}</span>
-              </div>
+              <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-xl text-xs font-black">
+                خصم {discountPercent}% ⚡
+              </span>
             </div>
           )}
 
@@ -502,7 +497,7 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
           {/* Rating Summary Card */}
           <div className="flex items-center gap-4 bg-white p-4 rounded-3xl border border-pink-100 shadow-sm">
             <div className="text-3xl font-black text-stone-900 font-serif">
-              {product.rating || '4.9'}
+              {product.rating ? Number(product.rating).toFixed(1) : '5.0'}
             </div>
             <div>
               <div className="flex items-center gap-1 text-amber-400">
@@ -511,100 +506,91 @@ export default function ProductDetailsClient({ product }: { product: Product }) 
                 ))}
               </div>
               <p className="text-[11px] text-stone-500 mt-0.5">
-                بناءً على {product.reviewsCount || (product.reviews?.length || 18)} تقييم مؤكد
+                {product.reviews && product.reviews.length > 0
+                  ? `بناءً على ${product.reviews.length} تقييم مسجل`
+                  : 'تقييم جودة وخامة الموديل'}
               </p>
             </div>
           </div>
         </div>
 
         {/* Reviews Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {(product.reviews && product.reviews.length > 0
-            ? product.reviews
-            : [
-                {
-                  id: 'default-1',
-                  name: 'سارة محمود',
-                  city: 'القاهرة',
-                  rating: 5,
-                  comment:
-                    'الخامة تحفة ما شاء الله والمقاس مظبوط جداً زي الصورة بالظبط، والتوصيل كان سريع في أقل من يومين! شكراً فاشون زون على الذوق والاهتمام ❤️',
-                  date: 'منذ يومين',
-                  verified: true,
-                },
-                {
-                  id: 'default-2',
-                  name: 'نورهان الشريف',
-                  city: 'الإسكندرية',
-                  rating: 5,
-                  comment:
-                    'الموديل يجنن باللبس وملمس القماش ناعم وراقي جداً، الكل سألني عنه في المناسبة! تجربة تسوق راقية وهطلب تاني بالتأكيد ✨',
-                  date: 'منذ 5 أيام',
-                  verified: true,
-                },
-                {
-                  id: 'default-3',
-                  name: 'مريم كمال',
-                  city: 'الجيزة',
-                  rating: 5,
-                  comment:
-                    'ما كنت متوقعة الجودة تكون بهالروعة بصراحة! التغليف أنيق جداً وريحة العطر مع اللبس فخمة، تستاهلوا 5 نجوم وأكثر 👌',
-                  date: 'منذ أسبوع',
-                  verified: true,
-                },
-              ]
-          ).map((rev: any, idx: number) => (
-            <div
-              key={rev.id || idx}
-              className="p-5 rounded-3xl bg-white border border-pink-100 shadow-sm hover:shadow-md transition flex flex-col justify-between space-y-3"
-            >
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-pink-400 to-rose-500 text-white font-bold text-xs flex items-center justify-center">
-                      {(rev.name || rev.author || 'ع').charAt(0)}
+        {product.reviews && product.reviews.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {product.reviews.map((rev: any, idx: number) => (
+              <div
+                key={rev.id || idx}
+                className="p-5 rounded-3xl bg-white border border-pink-100 shadow-sm hover:shadow-md transition flex flex-col justify-between space-y-3"
+              >
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-pink-400 to-rose-500 text-white font-bold text-xs flex items-center justify-center">
+                        {(rev.name || rev.author || 'ع').charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-stone-900">
+                          {rev.name || rev.author || 'عميلة مميزة'}
+                        </h4>
+                        {rev.city && (
+                          <p className="text-[10px] text-stone-400">{rev.city}</p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-stone-900">
-                        {rev.name || rev.author || 'عميلة مميزة'}
-                      </h4>
-                      {rev.city && (
-                        <p className="text-[10px] text-stone-400">{rev.city}</p>
-                      )}
-                    </div>
+
+                    {rev.verified !== false && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>شراء مؤكد</span>
+                      </span>
+                    )}
                   </div>
 
-                  {rev.verified !== false && (
-                    <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                      <span>شراء مؤكد</span>
-                    </span>
-                  )}
+                  {/* Stars */}
+                  <div className="flex items-center gap-1 text-amber-400">
+                    {[...Array(rev.rating || 5)].map((_, i) => (
+                      <Star key={i} className="w-3.5 h-3.5 fill-current" />
+                    ))}
+                  </div>
+
+                  {/* Review Text */}
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    "{rev.comment}"
+                  </p>
                 </div>
 
-                {/* Stars */}
-                <div className="flex items-center gap-1 text-amber-400">
-                  {[...Array(rev.rating || 5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-current" />
-                  ))}
+                <div className="pt-2 border-t border-pink-50 flex items-center justify-between text-[10px] text-stone-400">
+                  <span>{rev.date || 'تقييم حديث'}</span>
+                  <span className="flex items-center gap-1 text-rose-500 font-medium">
+                    <ThumbsUp className="w-3 h-3" />
+                    <span>موصى به</span>
+                  </span>
                 </div>
-
-                {/* Review Text */}
-                <p className="text-xs text-stone-600 leading-relaxed">
-                  "{rev.comment}"
-                </p>
               </div>
-
-              <div className="pt-2 border-t border-pink-50 flex items-center justify-between text-[10px] text-stone-400">
-                <span>{rev.date || 'تقييم حديث'}</span>
-                <span className="flex items-center gap-1 text-rose-500 font-medium">
-                  <ThumbsUp className="w-3 h-3" />
-                  <span>موصى به</span>
-                </span>
-              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="p-8 rounded-3xl bg-white border border-pink-100 shadow-xs text-center max-w-xl mx-auto space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-pink-50 text-rose-500 flex items-center justify-center mx-auto text-xl">
+              ✨
             </div>
-          ))}
-        </div>
+            <h3 className="text-base font-bold text-stone-900">
+              شاركينا رأيكِ في هذا الموديل الراقي
+            </h3>
+            <p className="text-xs text-stone-500 leading-relaxed">
+              رأيكِ يسعدنا ويساعد عميلاتنا في اختيار الإطلالة المثالية. بعد استلام طلبكِ يمكنكِ مشاركة تجربتكِ وصورك معنا عبر واتساب!
+            </p>
+            <a
+              href={`https://wa.me/${storeWhatsapp}?text=${encodeURIComponent(`مرحباً Fashion Zone، أود مشاركة رأيي وتقييمي في موديل: ${product.name}`)}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs px-5 py-2.5 rounded-xl transition shadow-xs"
+            >
+              <MessageCircle className="w-4 h-4" />
+              <span>إرسال تقييمكِ عبر واتساب</span>
+            </a>
+          </div>
+        )}
       </section>
 
       {/* Modals */}

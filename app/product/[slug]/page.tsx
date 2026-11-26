@@ -2,7 +2,6 @@ import React from 'react';
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { prisma } from '@/lib/prisma';
-import { PRODUCTS } from '@/lib/data';
 import ProductDetailsClient from './ProductDetailsClient';
 
 interface Props {
@@ -83,7 +82,7 @@ async function getProductBySlug(slug: string) {
     console.error('Error fetching product from DB:', err);
   }
 
-  return PRODUCTS.find((p) => p.slug === slug || p.slug === decodeURIComponent(slug));
+  return null;
 }
 
 // Generate Dynamic SEO & Open Graph Meta Tags for Facebook & WhatsApp

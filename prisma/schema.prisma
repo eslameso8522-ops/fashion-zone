@@ -131,6 +131,17 @@ model SiteSettings {
   watermarkEnabled    Boolean  @default(true)
   watermarkPosition   String   @default("bottom-right")
 
+  // Flash Sale Section Control
+  flashSaleEnabled    Boolean  @default(true)
+  flashSaleBadge      String?  @default("عروض شتاء 2026 الحصرية (Flash Sale)")
+  flashSaleTitle      String?  @default("تخفيضات تصل إلى 35% على تشكيلة الهوم وير والخروج! 🔥")
+  flashSaleSubtitle   String?  @default("استمتعي بأقوى عروض الموسم مع شحن مجاني لكافة محافظات مصر عند طلب قطعتين أو أكثر.")
+  flashSaleHours      Int      @default(6)
+
+  // Testimonials / Customer Reviews Section Control
+  testimonialsEnabled Boolean  @default(true)
+  testimonialsData    Json?
+
   updatedAt           DateTime @updatedAt
 }
 

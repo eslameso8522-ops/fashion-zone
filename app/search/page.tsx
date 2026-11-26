@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Search, Sparkles, ArrowLeft } from 'lucide-react';
 import { Product } from '@/lib/types';
-import { PRODUCTS } from '@/lib/data';
 import ProductCard from '@/components/ProductCard';
 
 function SearchResultsContent() {
